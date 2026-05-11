@@ -1,0 +1,2004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>MyEarnBot • Earn Crypto</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--tg-theme-bg-color, #f5f5f5);
+            color: var(--tg-theme-text-color, #1a1a1a);
+            padding: 16px;
+            padding-bottom: 80px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .tab-bar {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: var(--tg-theme-secondary-bg-color, #ffffff);
+            border-top: 1px solid rgba(0,0,0,0.1);
+            display: flex; padding: 8px 16px; max-width: 500px; margin: 0 auto; z-index: 100;
+        }
+        .tab-btn {
+            flex: 1; background: none; border: none; padding: 8px 0; font-size: 12px;
+            color: #8e8e8e; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;
+            border-radius: 12px;
+        }
+        .tab-btn span { font-size: 22px; }
+        .tab-btn.active { color: #40a7e3; background: rgba(64,167,227,0.1); }
+        .card {
+            background: var(--tg-theme-secondary-bg-color, #ffffff);
+            border-radius: 20px; padding: 20px; margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .balance-card { text-align: center; background: linear-gradient(135deg, #40a7e3, #2c7cb6); color: white; }
+        .balance-amount { font-size: 48px; font-weight: 800; margin: 8px 0; }
+        .click-coin {
+            width: 180px; height: 180px; margin: 20px auto;
+            background: radial-gradient(circle at 30% 30%, #ffd966, #e6b800);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 12px 24px rgba(0,0,0,0.2); cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+        .click-coin:active { transform: scale(0.95); }
+        .click-coin span { font-size: 64px; }
+        .stats-row { display: flex; justify-content: space-around; margin: 20px 0; gap: 16px; }
+        .stat-card {
+            flex: 1; background: var(--tg-theme-bg-color, #f0f0f0); border-radius: 16px;
+            padding: 12px; text-align: center;
+        }
+        .stat-value { font-size: 24px; font-weight: 700; color: #40a7e3; }
+        .stat-label { font-size: 12px; color: #8e8e8e; margin-top: 4px; }
+        .task-item {
+            background: var(--tg-theme-bg-color, #f8f9fa); border-radius: 16px;
+            padding: 16px; margin: 10px 0; display: flex; justify-content: space-between; align-items: center;
+        }
+        .btn {
+            background: #40a7e3; color: white; border: none;
+            padding: 14px 24px; border-radius: 30px; font-size: 16px;
+            font-weight: 600; cursor: pointer; width: 100%;
+        }
+        .btn-small { padding: 8px 20px; font-size: 14px; width: auto; }
+        input, select {
+            width: 100%; padding: 14px 16px; margin: 8px 0 16px;
+            border: 1px solid #ddd; border-radius: 14px; font-size: 16px;
+        }
+        .referral-link-box { display: flex; gap: 8px; margin: 16px 0; }
+        .referral-link-box input { flex: 1; margin: 0; font-size: 12px; }
+        .history-item {
+            background: #f8f9fa; border-radius: 14px; padding: 14px;
+            margin: 10px 0; border-left: 4px solid #ff9800;
+        }
+        .toast {
+            position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.85); color: white; padding: 12px 24px;
+            border-radius: 40px; font-size: 14px; z-index: 1000;
+            animation: fadeInOut 3s ease;
+        }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            85% { opacity: 1; }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        h2 { font-size: 20px; margin-bottom: 16px; font-weight: 600; }
+        h3 { font-size: 18px; margin: 16px 0 12px; font-weight: 600; }
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8); z-index: 999; display: flex;
+            align-items: center; justify-content: center; flex-direction: column;
+            color: white; font-size: 18px;
+        }
+        @media (max-width: 480px) {
+            body { padding: 12px; padding-bottom: 80px; }
+            .balance-amount { font-size: 36px; }
+            .click-coin { width: 150px; height: 150px; }
+            .click-coin span { font-size: 48px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loadingOverlay" class="loading-overlay">
+        <div>⏳ Loading...</div>
+    </div>
+
+    <!-- Home Tab -->
+    <div id="homeTab" class="tab-content active">
+        <div class="card balance-card">
+            <h2>💰 MyEarnBot</h2>
+            <div class="balance-amount" id="balanceDisplay">0</div>
+            <p>⭐ Level <span id="levelDisplay">1</span> • <span id="xpDisplay">0</span>/1000 XP</p>
+        </div>
+        <div class="click-coin" id="clickCoin"><span>🪙</span></div>
+        <div class="stats-row">
+            <div class="stat-card"><div class="stat-value" id="clickPowerDisplay">1</div><div class="stat-label">per click</div></div>
+            <div class="stat-card"><div class="stat-value" id="passiveIncomeDisplay">0</div><div class="stat-label">coins/sec</div></div>
+        </div>
+        <h3>⚡ Upgrades</h3>
+        <div id="upgradesList"></div>
+        <div style="margin-top: 20px;">
+            <button class="btn btn-secondary" id="watchAdBtn">📺 Watch Ad (+1000 coins)</button>
+            <p id="adStatus" style="font-size: 12px; text-align: center; margin-top: 8px;"></p>
+        </div>
+    </div>
+
+    <!-- Tasks Tab -->
+    <div id="tasksTab" class="tab-content">
+        <h2>📋 Daily Tasks</h2>
+        <div class="card"><p>🎯 Complete tasks to earn bonuses!</p></div>
+        <div id="task-telegram" class="task-item">
+            <div><strong>📢 Join Telegram</strong><br><small>Join @oroo_meme</small></div>
+            <button class="btn-small" onclick="completeTask(2000)">+2,000</button>
+        </div>
+        <div id="task-youtube" class="task-item">
+            <div><strong>🎬 Subscribe YouTube</strong><br><small>Subscribe to @kemalziyad</small></div>
+            <button class="btn-small" onclick="completeTask(5000)">+5,000</button>
+        </div>
+        <div id="task-facebook" class="task-item">
+            <div><strong>📘 Follow Facebook</strong><br><small>Follow our page</small></div>
+            <button class="btn-small" onclick="completeTask(3000)">+3,000</button>
+        </div>
+    </div>
+
+    <!-- Referrals Tab -->
+    <div id="referralsTab" class="tab-content">
+        <h2>👥 Invite Friends</h2>
+        <div class="card">
+            <p>🎁 Get 500 coins for each friend who joins!</p>
+            <div class="referral-link-box">
+                <input type="text" id="referralLinkInput" readonly>
+                <button class="btn-small" onclick="copyReferralLink()">📋 Copy</button>
+            </div>
+            <button class="btn btn-secondary" onclick="shareReferralLink()">📱 Share Link</button>
+        </div>
+        <div class="card">
+            <h3>📊 Your Stats</h3>
+            <div style="display: flex; justify-content: space-between; margin: 12px 0;">
+                <span>Friends joined:</span>
+                <strong id="referralCount">0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>Commission earned:</span>
+                <strong id="commissionEarned">0</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- Withdraw Tab -->
+    <div id="withdrawTab" class="tab-content">
+        <h2>💸 Withdraw Earnings</h2>
+        <div class="card">
+            <div style="display: flex; justify-content: space-between;">
+                <span>💰 Available balance:</span>
+                <strong id="withdrawBalance">0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+                <span>🎯 Minimum withdrawal:</span>
+                <strong>1000</strong> coins ($1 USD)
+            </div>
+        </div>
+        <div class="card">
+            <h3>📤 Request Withdrawal</h3>
+            <select id="withdrawMethod">
+                <option value="">-- Select Method --</option>
+                <option value="cbe">🏦 CBE Bank (Ethiopia)</option>
+                <option value="cbo">🏦 Cooperative Bank of Oromia</option>
+                <option value="telebir">📱 Telebirr</option>
+                <option value="mpesa">📱 M-Pesa</option>
+                <option value="ton">🌐 TON Crypto</option>
+                <option value="usdt">💵 USDT (TRC-20)</option>
+            </select>
+            <input type="text" id="accountNumber" placeholder="Account Number / Wallet Address">
+            <input type="text" id="accountName" placeholder="Account Holder Name (for bank)">
+            <input type="number" id="withdrawAmount" placeholder="Amount (min 1000)" min="1000">
+            <button class="btn" id="withdrawBtn">Request Withdrawal</button>
+            <p id="withdrawError" style="color:#f44336; display:none;"></p>
+        </div>
+        <h3>📜 Withdrawal History</h3>
+        <div id="withdrawHistory"></div>
+    </div>
+
+    <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('home')"><span>🏠</span><span>Home</span></button>
+        <button class="tab-btn" onclick="switchTab('tasks')"><span>📋</span><span>Tasks</span></button>
+        <button class="tab-btn" onclick="switchTab('referrals')"><span>👥</span><span>Team</span></button>
+        <button class="tab-btn" onclick="switchTab('withdraw')"><span>💸</span><span>Cash out</span></button>
+    </div>
+
+    <script>
+        // ==================== FIREBASE CONFIG ====================
+        const firebaseConfig = {
+            apiKey: "AIzaSyBIqiyv8RdDsoiyfO9FVDb8Uj3wp26g7DY",
+            authDomain: "application-creation-71a9e.firebaseapp.com",
+            databaseURL: "https://application-creation-71a9e-default-rtdb.firebaseio.com",
+            projectId: "application-creation-71a9e",
+            storageBucket: "application-creation-71a9e.firebasestorage.app",
+            messagingSenderId: "705808831621",
+            appId: "1:705808831621:web:521d1080b8f1fdc3e845ec"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const auth = firebase.auth();
+        
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        
+        let currentUser = null;
+        let userId = null;
+        let adCooldown = false;
+        
+        function showToast(msg) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        // Listen to user data
+        function listenUser(uid) {
+            database.ref(`users/${uid}`).on('value', (snap) => {
+                if (snap.exists()) {
+                    currentUser = snap.val();
+                    updateUI();
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                } else {
+                    database.ref(`users/${uid}`).set({
+                        coins: 0, xp: 0, level: 1, clickPower: 1, passiveIncome: 0,
+                        referralCount: 0, commissionEarned: 0, referrerId: null,
+                        adsWatchedToday: 0, lastAdReset: Date.now(),
+                        createdAt: Date.now()
+                    });
+                }
+            });
+        }
+        
+        function updateUI() {
+            if (!currentUser) return;
+            document.getElementById('balanceDisplay').textContent = (currentUser.coins || 0).toLocaleString();
+            document.getElementById('withdrawBalance').textContent = (currentUser.coins || 0).toLocaleString();
+            document.getElementById('levelDisplay').textContent = currentUser.level || 1;
+            document.getElementById('xpDisplay').textContent = currentUser.xp || 0;
+            document.getElementById('clickPowerDisplay').textContent = currentUser.clickPower || 1;
+            document.getElementById('passiveIncomeDisplay').textContent = (currentUser.passiveIncome || 0).toFixed(1);
+            document.getElementById('referralCount').textContent = currentUser.referralCount || 0;
+            document.getElementById('commissionEarned').textContent = (currentUser.commissionEarned || 0).toLocaleString();
+            document.getElementById('adStatus').textContent = `📊 Today: ${currentUser.adsWatchedToday || 0}/5000 ads`;
+        }
+        
+        window.switchTab = function(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId + 'Tab').classList.add('active');
+            event.target.closest('.tab-btn').classList.add('active');
+            tg.HapticFeedback.impactOccurred('light');
+        };
+        
+        // Complete task
+        window.completeTask = async function(reward) {
+            if (!currentUser) return;
+            if (confirm(`Complete this task to earn ${reward.toLocaleString()} coins?`)) {
+                await database.ref(`users/${userId}`).transaction(user => {
+                    if (user) {
+                        user.coins = (user.coins || 0) + reward;
+                        user.xp = (user.xp || 0) + 10;
+                        if (user.xp >= 1000) {
+                            user.level = (user.level || 1) + 1;
+                            user.xp = 0;
+                            showToast(`🎉 Level up! Now level ${user.level}`);
+                        }
+                    }
+                    return user;
+                });
+                showToast(`🎉 +${reward.toLocaleString()} coins!`);
+                tg.HapticFeedback.notificationOccurred('success');
+            }
+        };
+        
+        // Click coin
+        document.getElementById('clickCoin').addEventListener('click', async () => {
+            if (!currentUser) return;
+            await database.ref(`users/${userId}`).transaction(user => {
+                if (user) {
+                    user.coins = (user.coins || 0) + (user.clickPower || 1);
+                    user.xp = (user.xp || 0) + 1;
+                    if (user.xp >= 1000) {
+                        user.level = (user.level || 1) + 1;
+                        user.xp = 0;
+                        showToast(`🎉 Level up! Now level ${user.level}`);
+                    }
+                }
+                return user;
+            });
+            tg.HapticFeedback.impactOccurred('medium');
+        });
+        
+        // Upgrades
+        const upgrades = [
+            { name: '💪 Stronger Finger', type: 'click', power: 1, cost: 50 },
+            { name: '⚡ Turbo Tap', type: 'click', power: 5, cost: 500 },
+            { name: '⛏️ Auto Miner', type: 'passive', power: 0.1, cost: 100 },
+            { name: '🏭 Mining Farm', type: 'passive', power: 1, cost: 1100 }
+        ];
+        
+        function renderUpgrades() {
+            const container = document.getElementById('upgradesList');
+            if (!container) return;
+            container.innerHTML = '';
+            upgrades.forEach(up => {
+                const disabled = !currentUser || (currentUser.coins || 0) < up.cost;
+                container.innerHTML += `
+                    <div class="task-item">
+                        <div><strong>${up.name}</strong><br><small>+${up.power} ${up.type === 'click' ? 'per click' : 'per sec'}</small></div>
+                        <button class="btn-small" onclick="buyUpgrade(${up.cost}, '${up.type}', ${up.power})" ${disabled ? 'disabled' : ''}>
+                            ${up.cost} 🪙
+                        </button>
+                    </div>
+                `;
+            });
+        }
+        
+        window.buyUpgrade = async function(cost, type, power) {
+            if (!currentUser || (currentUser.coins || 0) < cost) {
+                showToast('❌ Not enough coins');
+                return;
+            }
+            await database.ref(`users/${userId}`).transaction(user => {
+                if (user && user.coins >= cost) {
+                    user.coins -= cost;
+                    if (type === 'click') {
+                        user.clickPower = (user.clickPower || 1) + power;
+                    } else {
+                        user.passiveIncome = (user.passiveIncome || 0) + power;
+                    }
+                }
+                return user;
+            });
+            showToast('✅ Upgrade purchased!');
+            tg.HapticFeedback.notificationOccurred('success');
+        };
+        
+        // Passive income
+        setInterval(() => {
+            if (currentUser && currentUser.passiveIncome > 0) {
+                database.ref(`users/${userId}`).transaction(user => {
+                    if (user) user.coins = (user.coins || 0) + (user.passiveIncome || 0);
+                    return user;
+                });
+            }
+        }, 1000);
+        
+        // Watch ad
+        async function canWatchAd() {
+            if (!currentUser) return false;
+            const now = Date.now();
+            const today = new Date(now).toDateString();
+            const lastReset = currentUser.lastAdReset ? new Date(currentUser.lastAdReset).toDateString() : null;
+            if (lastReset !== today) {
+                await database.ref(`users/${userId}`).update({ adsWatchedToday: 0, lastAdReset: now });
+                currentUser.adsWatchedToday = 0;
+            }
+            return (currentUser.adsWatchedToday || 0) < 5000;
+        }
+        
+        document.getElementById('watchAdBtn').addEventListener('click', async () => {
+            if (!currentUser) return;
+            if (adCooldown) { showToast("⏳ Please wait 30 seconds"); return; }
+            if (!await canWatchAd()) { showToast("📊 Daily ad limit reached"); return; }
+            
+            adCooldown = true;
+            const btn = document.getElementById('watchAdBtn');
+            btn.disabled = true;
+            btn.textContent = 'Watching ad...';
+            
+            await new Promise(r => setTimeout(r, 3000));
+            
+            await database.ref(`users/${userId}`).transaction(user => {
+                if (user) {
+                    user.coins = (user.coins || 0) + 1000;
+                    user.adsWatchedToday = (user.adsWatchedToday || 0) + 1;
+                }
+                return user;
+            });
+            
+            showToast('🎉 +1000 coins!');
+            tg.HapticFeedback.notificationOccurred('success');
+            
+            setTimeout(() => {
+                adCooldown = false;
+                btn.disabled = false;
+                btn.textContent = '📺 Watch Ad (+1000 coins)';
+            }, 30000);
+        });
+        
+        // Referral system
+        async function initReferral() {
+            const botUsername = "OibbBot";
+            const link = `https://t.me/${botUsername}/start?startapp=ref_${userId}`;
+            document.getElementById('referralLinkInput').value = link;
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const startParam = urlParams.get('tgWebAppStartParam');
+            if (startParam && startParam.startsWith('ref_')) {
+                const referrerId = startParam.replace('ref_', '');
+                if (referrerId !== userId) {
+                    await database.ref(`users/${referrerId}`).transaction(user => {
+                        if (user) {
+                            user.coins = (user.coins || 0) + 500;
+                            user.referralCount = (user.referralCount || 0) + 1;
+                            user.commissionEarned = (user.commissionEarned || 0) + 500;
+                        }
+                        return user;
+                    });
+                    showToast('🎉 Welcome! You got 500 bonus coins!');
+                }
+            }
+        }
+        
+        window.copyReferralLink = function() {
+            const input = document.getElementById('referralLinkInput');
+            input.select();
+            navigator.clipboard.writeText(input.value);
+            showToast('✅ Link copied!');
+        };
+        
+        window.shareReferralLink = function() {
+            const link = document.getElementById('referralLinkInput').value;
+            tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=Join me and earn crypto! 🚀`);
+        };
+        
+        // Withdrawal
+        document.getElementById('withdrawBtn').addEventListener('click', async () => {
+            const amount = parseInt(document.getElementById('withdrawAmount').value);
+            const method = document.getElementById('withdrawMethod').value;
+            const accountNumber = document.getElementById('accountNumber').value.trim();
+            const accountName = document.getElementById('accountName').value.trim();
+            const errorEl = document.getElementById('withdrawError');
+            
+            if (!method) { errorEl.textContent = 'Select method'; errorEl.style.display='block'; return; }
+            if (!amount || amount < 1000) { errorEl.textContent = 'Minimum 1000 coins'; errorEl.style.display='block'; return; }
+            if (!accountNumber) { errorEl.textContent = 'Enter account'; errorEl.style.display='block'; return; }
+            if (!currentUser || (currentUser.coins || 0) < amount) { errorEl.textContent = 'Insufficient balance'; errorEl.style.display='block'; return; }
+            
+            errorEl.style.display = 'none';
+            const btn = document.getElementById('withdrawBtn');
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+            
+            try {
+                await database.ref('withdrawals').push().set({
+                    userId: userId,
+                    amount: amount,
+                    usdAmount: (amount / 1000).toFixed(2),
+                    method: method,
+                    accountNumber: accountNumber,
+                    accountName: accountName,
+                    status: 'pending',
+                    requestedAt: Date.now()
+                });
+                
+                await database.ref(`users/${userId}`).transaction(user => {
+                    if (user) user.coins = (user.coins || 0) - amount;
+                    return user;
+                });
+                
+                showToast('✅ Withdrawal request submitted!');
+                tg.HapticFeedback.notificationOccurred('success');
+                
+                document.getElementById('withdrawAmount').value = '';
+                document.getElementById('accountNumber').value = '';
+                document.getElementById('accountName').value = '';
+                document.getElementById('withdrawMethod').value = '';
+            } catch(e) {
+                showToast('❌ Error submitting request');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Request Withdrawal';
+            }
+        });
+        
+        function loadWithdrawalHistory() {
+            if (!userId) return;
+            database.ref('withdrawals').orderByChild('userId').equalTo(userId).on('value', snap => {
+                const data = snap.val();
+                const container = document.getElementById('withdrawHistory');
+                container.innerHTML = '';
+                if (!data) { container.innerHTML = '<p>No withdrawals yet</p>'; return; }
+                Object.entries(data).sort((a,b) => b[1].requestedAt - a[1].requestedAt).forEach(([id, w]) => {
+                    container.innerHTML += `
+                        <div class="history-item ${w.status}">
+                            <div><strong>${w.status.toUpperCase()}</strong> - ${new Date(w.requestedAt).toLocaleDateString()}</div>
+                            <div>${w.amount.toLocaleString()} coins via ${w.method}</div>
+                        </div>
+                    `;
+                });
+            });
+        }
+        
+        // Initialize
+        async function init() {
+            try {
+                const existing = auth.currentUser;
+                if (existing) {
+                    userId = existing.uid;
+                    listenUser(userId);
+                    renderUpgrades();
+                    initReferral();
+                    loadWithdrawalHistory();
+                } else {
+                    const cred = await auth.signInAnonymously();
+                    userId = cred.user.uid;
+                    listenUser(userId);
+                    renderUpgrades();
+                    initReferral();
+                    loadWithdrawalHistory();
+                }
+                console.log("✅ Connected to Firebase");
+            } catch(e) {
+                console.error("Auth error:", e);
+                document.getElementById('loadingOverlay').innerHTML = `
+                    <div>❌ Connection failed</div>
+                    <button onclick="location.reload()" style="margin-top:15px;padding:10px 20px;border-radius:30px;background:#40a7e3;color:white;border:none;">Retry</button>
+                `;
+            }
+        }
+        init();
+        setInterval(() => { if (currentUser) renderUpgrades(); }, 2000);
+    </script>
+</body>
+</html>
+    <meta charset="UTF-8">
+    <meta name="<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>MyEarnBot • Earn Crypto</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--tg-theme-bg-color, #f5f5f5);
+            color: var(--tg-theme-text-color, #1a1a1a);
+            padding: 16px;
+            padding-bottom: 80px;
+            max-width: 500px;
+            margin: 0 auto;
+            min-height: 100vh;
+        }
+        .tab-bar {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: var(--tg-theme-secondary-bg-color, #ffffff);
+            border-top: 1px solid rgba(0,0,0,0.1);
+            display: flex; padding: 8px 16px; max-width: 500px; margin: 0 auto; z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        .tab-btn {
+            flex: 1; background: none; border: none; padding: 8px 0; font-size: 12px;
+            color: #8e8e8e; cursor: pointer; transition: all 0.2s;
+            display: flex; flex-direction: column; align-items: center; gap: 4px; border-radius: 12px;
+        }
+        .tab-btn span { font-size: 22px; }
+        .tab-btn.active { color: #40a7e3; background: rgba(64,167,227,0.1); }
+        .card {
+            background: var(--tg-theme-secondary-bg-color, #ffffff);
+            border-radius: 20px; padding: 20px; margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .balance-card { text-align: center; background: linear-gradient(135deg, #40a7e3, #2c7cb6); color: white; }
+        .balance-amount { font-size: 48px; font-weight: 800; margin: 8px 0; }
+        .click-coin {
+            width: 180px; height: 180px; margin: 20px auto;
+            background: radial-gradient(circle at 30% 30%, #ffd966, #e6b800);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 12px 24px rgba(0,0,0,0.2); cursor: pointer; transition: transform 0.1s ease;
+        }
+        .click-coin:active { transform: scale(0.95); }
+        .click-coin span { font-size: 64px; }
+        .stats-row { display: flex; justify-content: space-around; margin: 20px 0; gap: 16px; }
+        .stat-card {
+            flex: 1; background: var(--tg-theme-bg-color, #f0f0f0); border-radius: 16px;
+            padding: 12px; text-align: center;
+        }
+        .stat-value { font-size: 24px; font-weight: 700; color: #40a7e3; }
+        .stat-label { font-size: 12px; color: #8e8e8e; margin-top: 4px; }
+        .task-item {
+            background: var(--tg-theme-bg-color, #f8f9fa); border-radius: 16px;
+            padding: 16px; margin: 10px 0; display: flex; justify-content: space-between; align-items: center;
+        }
+        .btn {
+            background: #40a7e3; color: white; border: none;
+            padding: 14px 24px; border-radius: 30px; font-size: 16px;
+            font-weight: 600; cursor: pointer; width: 100%;
+        }
+        .btn-small { padding: 8px 20px; font-size: 14px; width: auto; }
+        .btn-secondary { background: #e0e0e0; color: #000; }
+        .btn-gold { background: linear-gradient(135deg, #ffd700, #ffb347); color: #000; font-weight: bold; }
+        input, select {
+            width: 100%; padding: 14px 16px; margin: 8px 0 16px;
+            border: 1px solid #ddd; border-radius: 14px; font-size: 16px;
+        }
+        .referral-link-box { display: flex; gap: 8px; margin: 16px 0; }
+        .referral-link-box input { flex: 1; margin: 0; font-size: 12px; }
+        .history-item {
+            background: #f8f9fa; border-radius: 14px; padding: 14px;
+            margin: 10px 0; border-left: 4px solid #ff9800;
+        }
+        .history-item.approved { border-left-color: #4caf50; }
+        .history-item.rejected { border-left-color: #f44336; }
+        .toast {
+            position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.85); color: white; padding: 12px 24px;
+            border-radius: 40px; font-size: 14px; z-index: 1000;
+            animation: fadeInOut 3s ease;
+        }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            85% { opacity: 1; }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        h2 { font-size: 20px; margin-bottom: 16px; font-weight: 600; }
+        h3 { font-size: 18px; margin: 16px 0 12px; font-weight: 600; }
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8); z-index: 999; display: flex;
+            align-items: center; justify-content: center; flex-direction: column;
+            color: white; font-size: 18px;
+        }
+        @media (max-width: 480px) {
+            body { padding: 12px; padding-bottom: 80px; }
+            .balance-amount { font-size: 36px; }
+            .click-coin { width: 150px; height: 150px; }
+            .click-coin span { font-size: 48px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loadingOverlay" class="loading-overlay">
+        <div>⏳ Loading...</div>
+    </div>
+
+    <!-- Home Tab -->
+    <div id="homeTab" class="tab-content active">
+        <div class="card balance-card">
+            <h2>💰 MyEarnBot</h2>
+            <div class="balance-amount" id="balanceDisplay">0</div>
+            <p>⭐ Level <span id="levelDisplay">1</span> • <span id="xpDisplay">0</span>/1000 XP</p>
+        </div>
+        <div class="click-coin" id="clickCoin"><span>🪙</span></div>
+        <div class="stats-row">
+            <div class="stat-card"><div class="stat-value" id="clickPowerDisplay">1</div><div class="stat-label">per click</div></div>
+            <div class="stat-card"><div class="stat-value" id="passiveIncomeDisplay">0</div><div class="stat-label">coins/sec</div></div>
+        </div>
+        <h3>⚡ Upgrades</h3>
+        <div id="upgradesList"></div>
+        <div style="margin-top: 20px;">
+            <button class="btn btn-secondary" id="watchAdBtn">📺 Watch Ad (+1000 coins)</button>
+            <p id="adStatus" style="font-size: 12px; text-align: center; margin-top: 8px;"></p>
+        </div>
+    </div>
+
+    <!-- Tasks Tab -->
+    <div id="tasksTab" class="tab-content">
+        <h2>📋 Earn More Coins</h2>
+        <div class="card"><p>🎯 Complete tasks to earn bonuses!</p></div>
+        <div id="task1" class="task-item">
+            <div><strong>📢 Join Telegram</strong><br><small>Join our community</small><span class="reward-badge">+2,000</span></div>
+            <button class="btn-small" onclick="completeTask('telegram', 2000)">Start</button>
+        </div>
+        <div id="task2" class="task-item">
+            <div><strong>🎬 Subscribe YouTube</strong><br><small>Subscribe to channel</small><span class="reward-badge">+5,000</span></div>
+            <button class="btn-small" onclick="completeTask('youtube', 5000)">Start</button>
+        </div>
+        <div id="task3" class="task-item">
+            <div><strong>📘 Follow Facebook</strong><br><small>Follow our page</small><span class="reward-badge">+3,000</span></div>
+            <button class="btn-small" onclick="completeTask('facebook', 3000)">Start</button>
+        </div>
+    </div>
+
+    <!-- Referrals Tab -->
+    <div id="referralsTab" class="tab-content">
+        <h2>👥 Invite & Earn</h2>
+        <div class="card">
+            <h3>💰 Commission Structure</h3>
+            <ul style="margin-left: 20px; margin-top: 10px;">
+                <li>🎁 Direct Referral: <strong>+500 coins</strong> per friend</li>
+                <li>👑 Agent (25+ referrals): <strong>+1000 coins</strong> per friend</li>
+                <li>🏆 Master Agent (100+ referrals): <strong>+2000 coins</strong> per friend</li>
+                <li>📊 Weekly Bonus: <strong>10%</strong> of team earnings</li>
+            </ul>
+        </div>
+        <div class="card">
+            <p>📋 Your Referral Link:</p>
+            <div class="referral-link-box">
+                <input type="text" id="referralLinkInput" readonly>
+                <button class="btn-small" onclick="copyReferralLink()">📋 Copy</button>
+            </div>
+            <button class="btn btn-secondary" onclick="shareReferralLink()">📱 Share Link</button>
+        </div>
+        <div class="card">
+            <h3>📊 Your Stats</h3>
+            <div style="display: flex; justify-content: space-between; margin: 12px 0;">
+                <span>🎯 Direct Referrals:</span>
+                <strong id="directReferrals">0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin: 12px 0;">
+                <span>⭐ Team Members:</span>
+                <strong id="teamCount">0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>💰 Commission Earned:</span>
+                <strong id="commissionEarned">0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 12px;">
+                <span>📈 This Week:</span>
+                <strong id="weeklyEarnings">0</strong>
+            </div>
+        </div>
+        <div class="card" id="agentCard" style="display: none; background: linear-gradient(135deg, #ffd700, #ffb347);">
+            <h3>👑 Agent Status</h3>
+            <p>You are an <strong>Agent</strong>! You earn higher commissions!</p>
+            <p id="agentBonusInfo"></p>
+        </div>
+    </div>
+
+    <!-- Withdraw Tab -->
+    <div id="withdrawTab" class="tab-content">
+        <h2>💸 Withdraw Earnings</h2>
+        <div class="card">
+            <div style="display: flex; justify-content: space-between;">
+                <span>💰 Available:</span>
+                <strong id="withdrawBalance">0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+                <span>🎯 Minimum:</span>
+                <strong id="minWithdrawDisplay">1000</strong> coins ($1)
+            </div>
+        </div>
+        <div class="card">
+            <h3>📤 Request Withdrawal</h3>
+            <select id="withdrawMethod">
+                <option value="">-- Select Method --</option>
+                <option value="cbe">🏦 CBE Bank (Ethiopia)</option>
+                <option value="cbo">🏦 Cooperative Bank of Oromia</option>
+                <option value="telebir">📱 Telebirr</option>
+                <option value="mpesa">📱 M-Pesa</option>
+                <option value="ton">🌐 TON Crypto</option>
+                <option value="usdt">💵 USDT (TRC-20)</option>
+                <option value="btc">₿ Bitcoin</option>
+                <option value="eth">⟠ Ethereum</option>
+            </select>
+            <input type="text" id="accountNumber" placeholder="Account / Wallet Address">
+            <input type="text" id="accountName" placeholder="Account Holder Name">
+            <input type="number" id="withdrawAmount" placeholder="Amount (min 1000)" min="1000">
+            <button class="btn" id="withdrawBtn">Request Withdrawal</button>
+            <p id="withdrawError" style="color:#f44336; display:none;"></p>
+        </div>
+        <h3>📜 History</h3>
+        <div id="withdrawHistory"></div>
+    </div>
+
+    <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('home')"><span>🏠</span><span>Home</span></button>
+        <button class="tab-btn" onclick="switchTab('tasks')"><span>📋</span><span>Tasks</span></button>
+        <button class="tab-btn" onclick="switchTab('referrals')"><span>👥</span><span>Team</span></button>
+        <button class="tab-btn" onclick="switchTab('withdraw')"><span>💸</span><span>Cash out</span></button>
+    </div>
+
+    <script>
+        // ==================== YOUR FIREBASE CONFIG ====================
+        const firebaseConfig = {
+            apiKey: "AIzaSyBIqiyv8RdDsoiyfO9FVDb8Uj3wp26g7DY",
+            authDomain: "application-creation-71a9e.firebaseapp.com",
+            databaseURL: "https://application-creation-71a9e-default-rtdb.firebaseio.com",
+            projectId: "application-creation-71a9e",
+            storageBucket: "application-creation-71a9e.firebasestorage.app",
+            messagingSenderId: "705808831621",
+            appId: "1:705808831621:web:521d1080b8f1fdc3e845ec",
+            measurementId: "G-XRYRR1MM8P"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const auth = firebase.auth();
+        
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        
+        let currentUser = null;
+        let userId = null;
+        let settings = {
+            minWithdrawal: 1000,
+            exchangeRate: 1000,
+            adReward: 1000,
+            dailyAdLimit: 5000,
+            directReferralBonus: 500,
+            agentReferralBonus: 1000,
+            masterAgentReferralBonus: 2000,
+            agentThreshold: 25,
+            masterAgentThreshold: 100
+        };
+        
+        function showToast(msg) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        async function loadSettings() {
+            try {
+                const snap = await database.ref('settings').once('value');
+                if (snap.exists()) settings = { ...settings, ...snap.val() };
+                document.getElementById('minWithdrawDisplay').textContent = settings.minWithdrawal;
+            } catch(e) { console.error("Settings error:", e); }
+        }
+        
+        function getUserTier(referralCount) {
+            if (referralCount >= settings.masterAgentThreshold) return 'master';
+            if (referralCount >= settings.agentThreshold) return 'agent';
+            return 'user';
+        }
+        
+        function getReferralBonus(tier) {
+            switch(tier) {
+                case 'master': return settings.masterAgentReferralBonus;
+                case 'agent': return settings.agentReferralBonus;
+                default: return settings.directReferralBonus;
+            }
+        }
+        
+        function listenUser(uid) {
+            const userRef = database.ref(`users/${uid}`);
+            userRef.on('value', async (snap) => {
+                if (snap.exists()) {
+                    currentUser = snap.val();
+                    updateUI();
+                    updateReferralUI();
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                } else {
+                    await userRef.set({
+                        coins: 0,
+                        xp: 0,
+                        level: 1,
+                        clickPower: 1,
+                        passiveIncome: 0,
+                        directReferrals: 0,
+                        teamCount: 0,
+                        commissionEarned: 0,
+                        weeklyEarnings: 0,
+                        lastWeeklyReset: Date.now(),
+                        referrerId: null,
+                        adsWatchedToday: 0,
+                        lastAdReset: Date.now(),
+                        createdAt: Date.now(),
+                        updatedAt: Date.now()
+                    });
+                }
+            });
+        }
+        
+        function updateUI() {
+            if (!currentUser) return;
+            document.getElementById('balanceDisplay').textContent = (currentUser.coins || 0).toLocaleString();
+            document.getElementById('withdrawBalance').textContent = (currentUser.coins || 0).toLocaleString();
+            document.getElementById('levelDisplay').textContent = currentUser.level || 1;
+            document.getElementById('xpDisplay').textContent = currentUser.xp || 0;
+            document.getElementById('clickPowerDisplay').textContent = currentUser.clickPower || 1;
+            document.getElementById('passiveIncomeDisplay').textContent = (currentUser.passiveIncome || 0).toFixed(1);
+            document.getElementById('adStatus').textContent = `📊 Today: ${currentUser.adsWatchedToday || 0}/${settings.dailyAdLimit} ads`;
+        }
+        
+        function updateReferralUI() {
+            if (!currentUser) return;
+            const directReferrals = currentUser.directReferrals || 0;
+            const teamCount = currentUser.teamCount || 0;
+            const commissionEarned = currentUser.commissionEarned || 0;
+            const weeklyEarnings = currentUser.weeklyEarnings || 0;
+            const tier = getUserTier(directReferrals);
+            
+            document.getElementById('directReferrals').textContent = directReferrals;
+            document.getElementById('teamCount').textContent = teamCount;
+            document.getElementById('commissionEarned').textContent = commissionEarned.toLocaleString();
+            document.getElementById('weeklyEarnings').textContent = weeklyEarnings.toLocaleString();
+            
+            const agentCard = document.getElementById('agentCard');
+            if (tier !== 'user') {
+                agentCard.style.display = 'block';
+                const bonusAmount = getReferralBonus(tier);
+                document.getElementById('agentBonusInfo').innerHTML = `🎁 You earn ${bonusAmount.toLocaleString()} coins per referral!`;
+                if (tier === 'master') {
+                    document.getElementById('agentBonusInfo').innerHTML += `<br>🏆 Master Agent: 10% weekly bonus on team earnings!`;
+                }
+            } else {
+                agentCard.style.display = 'none';
+            }
+        }
+        
+        window.switchTab = function(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId + 'Tab').classList.add('active');
+            event.target.closest('.tab-btn').classList.add('active');
+            tg.HapticFeedback.impactOccurred('light');
+        };
+        
+        window.completeTask = async function(taskId, reward) {
+            if (!currentUser) return;
+            tg.HapticFeedback.impactOccurred('light');
+            if (confirm(`Complete this task to earn ${reward.toLocaleString()} coins?`)) {
+                await database.ref(`users/${userId}`).transaction(user => {
+                    if (user) {
+                        user.coins = (user.coins || 0) + reward;
+                        user.xp = (user.xp || 0) + 10;
+                        if (user.xp >= 1000) {
+                            user.level = (user.level || 1) + 1;
+                            user.xp = 0;
+                            showToast(`🎉 Level up! Now level ${user.level}`);
+                        }
+                    }
+                    return user;
+                });
+                showToast(`🎉 +${reward.toLocaleString()} coins!`);
+            }
+        };
+        
+        document.getElementById('clickCoin').addEventListener('click', async () => {
+            if (!currentUser) return;
+            const clickValue = currentUser.clickPower || 1;
+            await database.ref(`users/${userId}`).transaction(user => {
+                if (user) {
+                    user.coins = (user.coins || 0) + clickValue;
+                    user.xp = (user.xp || 0) + 1;
+                    if (user.xp >= 1000) {
+                        user.level = (user.level || 1) + 1;
+                        user.xp = 0;
+                        showToast(`🎉 Level up! Now level ${user.level}`);
+                    }
+                }
+                return user;
+            });
+            tg.HapticFeedback.impactOccurred('medium');
+        });
+        
+        const upgrades = [
+            { id: 'click1', name: '💪 Stronger Finger', type: 'click', power: 1, cost: 50 },
+            { id: 'click2', name: '⚡ Turbo Tap', type: 'click', power: 5, cost: 500 },
+            { id: 'passive1', name: '⛏️ Auto Miner', type: 'passive', power: 0.1, cost: 100 },
+            { id: 'passive2', name: '🏭 Mining Farm', type: 'passive', power: 1, cost: 1100 }
+        ];
+        
+        function renderUpgrades() {
+            const container = document.getElementById('upgradesList');
+            if (!container) return;
+            container.innerHTML = '';
+            upgrades.forEach(up => {
+                const disabled = !currentUser || (currentUser.coins || 0) < up.cost;
+                container.innerHTML += `
+                    <div class="task-item">
+                        <div><strong>${up.name}</strong><br><small>+${up.power} ${up.type === 'click' ? 'per click' : 'per sec'}</small></div>
+                        <button class="btn-small" onclick="buyUpgrade('${up.id}', ${up.cost}, '${up.type}', ${up.power})" ${disabled ? 'disabled' : ''}>
+                            ${up.cost} 🪙
+                        </button>
+                    </div>
+                `;
+            });
+        }
+        
+        window.buyUpgrade = async function(upId, cost, type, power) {
+            if (!currentUser || (currentUser.coins || 0) < cost) {
+                showToast('❌ Not enough coins');
+                return;
+            }
+            await database.ref(`users/${userId}`).transaction(user => {
+                if (user && user.coins >= cost) {
+                    user.coins -= cost;
+                    if (type === 'click') {
+                        user.clickPower = (user.clickPower || 1) + power;
+                    } else {
+                        user.passiveIncome = (user.passiveIncome || 0) + power;
+                    }
+                }
+                return user;
+            });
+            showToast('✅ Upgrade purchased!');
+            tg.HapticFeedback.notificationOccurred('success');
+        };
+        
+        setInterval(() => {
+            if (currentUser && currentUser.passiveIncome > 0) {
+                database.ref(`users/${userId}`).transaction(user => {
+                    if (user) user.coins = (user.coins || 0) + (user.passiveIncome || 0);
+                    return user;
+                });
+            }
+        }, 1000);
+        
+        let adCooldown = false;
+        async function canWatchAd() {
+            if (!currentUser) return false;
+            const now = Date.now();
+            const today = new Date(now).toDateString();
+            const lastReset = currentUser.lastAdReset ? new Date(currentUser.lastAdReset).toDateString() : null;
+            if (lastReset !== today) {
+                await database.ref(`users/${userId}`).update({ adsWatchedToday: 0, lastAdReset: now });
+                currentUser.adsWatchedToday = 0;
+            }
+            return (currentUser.adsWatchedToday || 0) < settings.dailyAdLimit;
+        }
+        
+        document.getElementById('watchAdBtn').addEventListener('click', async () => {
+            if (!currentUser) return;
+            if (adCooldown) { showToast("⏳ Wait 30 seconds"); return; }
+            if (!await canWatchAd()) { showToast(`📊 Daily limit reached`); return; }
+            
+            adCooldown = true;
+            const btn = document.getElementById('watchAdBtn');
+            btn.disabled = true;
+            let countdown = 5;
+            btn.textContent = `Watching ad... ${countdown}s`;
+            const interval = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    btn.textContent = `Watching ad... ${countdown}s`;
+                } else {
+                    clearInterval(interval);
+                }
+            }, 1000);
+            
+            await new Promise(r => setTimeout(r, 5000));
+            
+            await database.ref(`users/${userId}`).transaction(user => {
+                if (user) {
+                    user.coins = (user.coins || 0) + settings.adReward;
+                    user.adsWatchedToday = (user.adsWatchedToday || 0) + 1;
+                }
+                return user;
+            });
+            
+            showToast(`🎉 +${settings.adReward} coins!`);
+            tg.HapticFeedback.notificationOccurred('success');
+            
+            setTimeout(() => { adCooldown = false; }, 30000);
+            btn.disabled = false;
+            btn.textContent = '📺 Watch Ad (+1000 coins)';
+        });
+        
+        async function initReferral() {
+            const botUsername = "OibbBot";
+            const link = `https://t.me/${botUsername}/start?startapp=ref_${userId}`;
+            document.getElementById('referralLinkInput').value = link;
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const startParam = urlParams.get('tgWebAppStartParam');
+            if (startParam && startParam.startsWith('ref_')) {
+                const referrerId = startParam.replace('ref_', '');
+                if (referrerId !== userId) {
+                    await processReferral(referrerId);
+                }
+            }
+        }
+        
+        async function processReferral(referrerId) {
+            const referrerSnap = await database.ref(`users/${referrerId}`).once('value');
+            const referrer = referrerSnap.val();
+            const directReferrals = referrer?.directReferrals || 0;
+            const tier = getUserTier(directReferrals);
+            const bonusAmount = getReferralBonus(tier);
+            
+            await database.ref(`users/${referrerId}`).transaction(user => {
+                if (user) {
+                    user.coins = (user.coins || 0) + bonusAmount;
+                    user.directReferrals = (user.directReferrals || 0) + 1;
+                    user.teamCount = (user.teamCount || 0) + 1;
+                    user.commissionEarned = (user.commissionEarned || 0) + bonusAmount;
+                    user.weeklyEarnings = (user.weeklyEarnings || 0) + bonusAmount;
+                }
+                return user;
+            });
+            
+            await database.ref(`users/${userId}`).update({ referrerId });
+            showToast(`🎉 Welcome! You were referred and get 500 bonus coins!`);
+            
+            await database.ref(`users/${userId}`).transaction(user => {
+                if (user) user.coins = (user.coins || 0) + 500;
+                return user;
+            });
+        }
+        
+        window.copyReferralLink = function() {
+            const input = document.getElementById('referralLinkInput');
+            input.select();
+            navigator.clipboard.writeText(input.value);
+            showToast('✅ Link copied!');
+        };
+        
+        window.shareReferralLink = function() {
+            const link = document.getElementById('referralLinkInput').value;
+            tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=Join me and earn crypto with MyEarnBot! 🚀`);
+        };
+        
+        // ========== WITHDRAWAL USING BACKEND API ==========
+        document.getElementById('withdrawBtn').addEventListener('click', async () => {
+            const amount = parseInt(document.getElementById('withdrawAmount').value);
+            const method = document.getElementById('withdrawMethod').value;
+            const accountNumber = document.getElementById('accountNumber').value.trim();
+            const accountName = document.getElementById('accountName').value.trim();
+            const errorEl = document.getElementById('withdrawError');
+            
+            if (!method) { errorEl.textContent = 'Select method'; errorEl.style.display='block'; return; }
+            if (!amount || amount < settings.minWithdrawal) { errorEl.textContent = `Minimum ${settings.minWithdrawal} coins`; errorEl.style.display='block'; return; }
+            if (!accountNumber) { errorEl.textContent = 'Enter account'; errorEl.style.display='block'; return; }
+            if (!currentUser || (currentUser.coins || 0) < amount) { errorEl.textContent = 'Insufficient balance'; errorEl.style.display='block'; return; }
+            
+            errorEl.style.display = 'none';
+            const btn = document.getElementById('withdrawBtn');
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+            
+            try {
+                // Call backend API to process payout
+                const response = await fetch('/api/init-payout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: userId,
+                        amount: amount,
+                        method: method,
+                        accountNumber: accountNumber,
+                        accountName: accountName
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Deduct coins locally after successful API call
+                    await database.ref(`users/${userId}`).transaction(user => {
+                        if (user) user.coins = (user.coins || 0) - amount;
+                        return user;
+                    });
+                    
+                    showToast('✅ Withdrawal request submitted successfully!');
+                    tg.HapticFeedback.notificationOccurred('success');
+                    
+                    document.getElementById('withdrawAmount').value = '';
+                    document.getElementById('accountNumber').value = '';
+                    document.getElementById('accountName').value = '';
+                    document.getElementById('withdrawMethod').value = '';
+                } else {
+                    showToast('❌ Withdrawal failed: ' + result.error);
+                }
+            } catch(e) {
+                console.error('Withdrawal error:', e);
+                showToast('❌ Network error. Please try again.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Request Withdrawal';
+            }
+        });
+        
+        function loadWithdrawalHistory() {
+            if (!userId) return;
+            database.ref('withdrawals').orderByChild('userId').equalTo(userId).on('value', snap => {
+                const data = snap.val();
+                const container = document.getElementById('withdrawHistory');
+                container.innerHTML = '';
+                if (!data) { container.innerHTML = '<p>No withdrawals yet</p>'; return; }
+                Object.entries(data).sort((a,b) => b[1].requestedAt - a[1].requestedAt).forEach(([id, w]) => {
+                    container.innerHTML += `
+                        <div class="history-item ${w.status}">
+                            <div><strong>${w.status.toUpperCase()}</strong> - ${new Date(w.requestedAt).toLocaleDateString()}</div>
+                            <div>${w.amount.toLocaleString()} coins via ${w.method}</div>
+                        </div>
+                    `;
+                });
+            });
+        }
+        
+        async function calculateWeeklyBonuses() {
+            const now = Date.now();
+            const oneWeek = 7 * 24 * 60 * 60 * 1000;
+            const usersSnap = await database.ref('users').once('value');
+            const users = usersSnap.val() || {};
+            
+            for (const [uid, user] of Object.entries(users)) {
+                const lastReset = user.lastWeeklyReset || 0;
+                const directReferrals = user.directReferrals || 0;
+                const tier = getUserTier(directReferrals);
+                
+                if (tier === 'master' && (now - lastReset) >= oneWeek) {
+                    const weeklyBonus = (user.weeklyEarnings || 0) * 0.1;
+                    await database.ref(`users/${uid}`).transaction(u => {
+                        if (u) {
+                            u.coins = (u.coins || 0) + weeklyBonus;
+                            u.weeklyEarnings = 0;
+                            u.lastWeeklyReset = now;
+                        }
+                        return u;
+                    });
+                }
+            }
+        }
+        
+        setInterval(calculateWeeklyBonuses, 60 * 60 * 1000);
+        
+        async function init() {
+            try {
+                const existing = auth.currentUser;
+                if (existing) {
+                    userId = existing.uid;
+                    await loadSettings();
+                    listenUser(userId);
+                    renderUpgrades();
+                    initReferral();
+                    loadWithdrawalHistory();
+                    calculateWeeklyBonuses();
+                    return;
+                }
+                const cred = await auth.signInAnonymously();
+                userId = cred.user.uid;
+                await loadSettings();
+                listenUser(userId);
+                renderUpgrades();
+                initReferral();
+                loadWithdrawalHistory();
+                calculateWeeklyBonuses();
+                console.log("✅ Connected to Firebase");
+            } catch(e) {
+                console.error("Auth error:", e);
+                document.getElementById('loadingOverlay').innerHTML = `
+                    <div>❌ Connection failed</div>
+                    <div style="font-size:12px">${e.message}</div>
+                    <button onclick="location.reload()" style="margin-top:15px;padding:10px 20px;border-radius:30px;background:#40a7e3;color:white;border:none;">Retry</button>
+                `;
+            }
+        }
+        init();
+        setInterval(() => { if (currentUser) renderUpgrades(); }, 2000);
+    </script>
+</body>
+</html>" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>MyEarnBot • Earn Crypto</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--tg-theme-bg-color, #f5f5f5);
+            color: var(--tg-theme-text-color, #1a1a1a);
+            padding: 16px;
+            padding-bottom: 80px;
+            max-width: 500px;
+            margin: 0 auto;
+            min-height: 100vh;
+        }
+        .tab-bar {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: var(--tg-theme-secondary-bg-color, #ffffff);
+            border-top: 1px solid rgba(0,0,0,0.1);
+            display: flex; padding: 8px 16px; max-width: 500px; margin: 0 auto; z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        .tab-btn {
+            flex: 1; background: none; border: none; padding: 8px 0; font-size: 12px;
+            color: #8e8e8e; cursor: pointer; transition: all 0.2s;
+            display: flex; flex-direction: column; align-items: center; gap: 4px; border-radius: 12px;
+        }
+        .tab-btn span { font-size: 22px; }
+        .tab-btn.active { color: #40a7e3; background: rgba(64,167,227,0.1); }
+        .card {
+            background: var(--tg-theme-secondary-bg-color, #ffffff);
+            border-radius: 20px; padding: 20px; margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .balance-card { text-align: center; background: linear-gradient(135deg, #40a7e3, #2c7cb6); color: white; }
+        .balance-amount { font-size: 48px; font-weight: 800; margin: 8px 0; }
+        .click-coin {
+            width: 180px; height: 180px; margin: 20px auto;
+            background: radial-gradient(circle at 30% 30%, #ffd966, #e6b800);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 12px 24px rgba(0,0,0,0.2); cursor: pointer; transition: transform 0.1s ease;
+        }
+        .click-coin:active { transform: scale(0.95); }
+        .click-coin span { font-size: 64px; }
+        .stats-row { display: flex; justify-content: space-around; margin: 20px 0; gap: 16px; }
+        .stat-card {
+            flex: 1; background: var(--tg-theme-bg-color, #f0f0f0); border-radius: 16px;
+            padding: 12px; text-align: center;
+        }
+        .stat-value { font-size: 24px; font-weight: 700; color: #40a7e3; }
+        .stat-label { font-size: 12px; color: #8e8e8e; margin-top: 4px; }
+        .task-item {
+            background: var(--tg-theme-bg-color, #f8f9fa); border-radius: 16px;
+            padding: 16px; margin: 10px 0; display: flex; justify-content: space-between; align-items: center;
+        }
+        .btn {
+            background: #40a7e3; color: white; border: none;
+            padding: 14px 24px; border-radius: 30px; font-size: 16px;
+            font-weight: 600; cursor: pointer; width: 100%;
+        }
+        .btn-small { padding: 8px 20px; font-size: 14px; width: auto; }
+        .btn-secondary { background: #e0e0e0; color: #000; }
+        .btn-gold { background: linear-gradient(135deg, #ffd700, #ffb347); color: #000; font-weight: bold; }
+        input, select {
+            width: 100%; padding: 14px 16px; margin: 8px 0 16px;
+            border: 1px solid #ddd; border-radius: 14px; font-size: 16px;
+        }
+        .referral-link-box { display: flex; gap: 8px; margin: 16px 0; }
+        .referral-link-box input { flex: 1; margin: 0; font-size: 12px; }
+        .history-item {
+            background: #f8f9fa; border-radius: 14px; padding: 14px;
+            margin: 10px 0; border-left: 4px solid #ff9800;
+        }
+        .history-item.approved { border-left-color: #4caf50; }
+        .history-item.rejected { border-left-color: #f44336; }
+        .toast {
+            position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.85); color: white; padding: 12px 24px;
+            border-radius: 40px; font-size: 14px; z-index: 1000;
+            animation: fadeInOut 3s ease;
+        }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            85% { opacity: 1; }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        h2 { font-size: 20px; margin-bottom: 16px; font-weight: 600; }
+        h3 { font-size: 18px; margin: 16px 0 12px; font-weight: 600; }
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8); z-index: 999; display: flex;
+            align-items: center; justify-content: center; flex-direction: column;
+            color: white; font-size: 18px;
+        }
+        .commission-badge {
+            background: #4caf50; color: white; padding: 4px 8px;
+            border-radius: 20px; font-size: 11px; display: inline-block; margin-left: 8px;
+        }
+        @media (max-width: 480px) {
+            body { padding: 12px; padding-bottom: 80px; }
+            .balance-amount { font-size: 36px; }
+            .click-coin { width: 150px; height: 150px; }
+            .click-coin span { font-size: 48px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loadingOverlay" class="loading-overlay">
+        <div>⏳ Loading...</div>
+        <div style="font-size: 12px; margin-top: 10px;">Connecting to server</div>
+    </div>
+
+    <!-- Home Tab -->
+    <div id="homeTab" class="tab-content active">
+        <div class="card balance-card">
+            <h2>💰 MyEarnBot</h2>
+            <div class="balance-amount" id="balanceDisplay">0</div>
+            <p>⭐ Level <span id="levelDisplay">1</span> • <span id="xpDisplay">0</span>/1000 XP</p>
+        </div>
+        <div class="click-coin" id="clickCoin"><span>🪙</span></div>
+        <div class="stats-row">
+            <div class="stat-card"><div class="stat-value" id="clickPowerDisplay">1</div><div class="stat-label">per click</div></div>
+            <div class="stat-card"><div class="stat-value" id="passiveIncomeDisplay">0</div><div class="stat-label">coins/sec</div></div>
+        </div>
+        <h3>⚡ Upgrades</h3>
+        <div id="upgradesList"></div>
+        <div style="margin-top: 20px;">
+            <button class="btn btn-secondary" id="watchAdBtn">📺 Watch Ad (+1000 coins)</button>
+            <p id="adStatus" style="font-size: 12px; text-align: center; margin-top: 8px;"></p>
+        </div>
+    </div>
+
+    <!-- Tasks Tab -->
+    <div id="tasksTab" class="tab-content">
+        <h2>📋 Earn More Coins</h2>
+        <div class="card"><p>🎯 Complete tasks to earn bonuses!</p></div>
+        <div id="task1" class="task-item">
+            <div><strong>📢 Join Telegram</strong><br><small>Join our community</small><span class="reward-badge">+2,000</span></div>
+            <button class="btn-small" onclick="completeTask('telegram', 2000)">Start</button>
+        </div>
+        <div id="task2" class="task-item">
+            <div><strong>🎬 Subscribe YouTube</strong><br><small>Subscribe to channel</small><span class="reward-badge">+5,000</span></div>
+            <button class="btn-small" onclick="completeTask('youtube', 5000)">Start</button>
+        </div>
+        <div id="task3" class="task-item">
+            <div><strong>📘 Follow Facebook</strong><br><small>Follow our page</small><span class="reward-badge">+3,000</span></div>
+            <button class="btn-small" onclick="completeTask('facebook', 3000)">Start</button>
+        </div>
+    </div>
+
+    <!-- Referrals Tab -->
+    <div id="referralsTab" class="tab-content">
+        <h2>👥 Invite & Earn</h2>
+        <div class="card">
+            <h3>💰 Commission Structure</h3>
+            <ul style="margin-left: 20px; margin-top: 10px;">
+                <li>🎁 Direct Referral: <strong>+500 coins</strong> per friend</li>
+                <li>👑 Agent (25+ referrals): <strong>+1000 coins</strong> per friend</li>
+                <li>🏆 Master Agent (100+ referrals): <strong>+2000 coins</strong> per friend</li>
+                <li>📊 Weekly Bonus: <strong>10%</strong> of team earnings</li>
+            </ul>
+        </div>
+        <div class="card">
+            <p>📋 Your Referral Link:</p>
+            <div class="referral-link-box">
+                <input type="text" id="referralLinkInput" readonly>
+                <button class="btn-small" onclick="copyReferralLink()">📋 Copy</button>
+            </div>
+            <button class="btn btn-secondary" onclick="shareReferralLink()">📱 Share Link</button>
+        </div>
+        <div class="card">
+            <h3>📊 Your Stats</h3>
+            <div style="display: flex; justify-content: space-between; margin: 12px 0;">
+                <span>🎯 Direct Referrals:</span>
+                <strong id="directReferrals">0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin: 12px 0;">
+                <span>⭐ Team Members:</span>
+                <strong id="teamCount">0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>💰 Commission Earned:</span>
+                <strong id="commissionEarned">0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 12px;">
+                <span>📈 This Week:</span>
+                <strong id="weeklyEarnings">0</strong>
+            </div>
+        </div>
+        <div class="card" id="agentCard" style="display: none; background: linear-gradient(135deg, #ffd700, #ffb347);">
+            <h3>👑 Agent Status</h3>
+            <p>You are an <strong>Agent</strong>! You earn higher commissions!</p>
+            <p id="agentBonusInfo"></p>
+        </div>
+    </div>
+
+    <!-- Withdraw Tab -->
+    <div id="withdrawTab" class="tab-content">
+        <h2>💸 Withdraw Earnings</h2>
+        <div class="card">
+            <div style="display: flex; justify-content: space-between;">
+                <span>💰 Available:</span>
+                <strong id="withdrawBalance">0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+                <span>🎯 Minimum:</span>
+                <strong id="minWithdrawDisplay">1000</strong> coins ($1)
+            </div>
+        </div>
+        <div class="card">
+            <h3>📤 Request Withdrawal</h3>
+            <select id="withdrawMethod">
+                <option value="">-- Select Method --</option>
+                <option value="cbe">🏦 CBE Bank (Ethiopia)</option>
+                <option value="cbo">🏦 Cooperative Bank of Oromia</option>
+                <option value="telebir">📱 Telebirr</option>
+                <option value="mpesa">📱 M-Pesa</option>
+                <option value="ton">🌐 TON Crypto</option>
+                <option value="usdt">💵 USDT (TRC-20)</option>
+                <option value="btc">₿ Bitcoin</option>
+                <option value="eth">⟠ Ethereum</option>
+            </select>
+            <input type="text" id="accountNumber" placeholder="Account / Wallet Address">
+            <input type="text" id="accountName" placeholder="Account Holder Name">
+            <input type="number" id="withdrawAmount" placeholder="Amount (min 1000)" min="1000">
+            <button class="btn" id="withdrawBtn">Request Withdrawal</button>
+            <p id="withdrawError" style="color:#f44336; display:none;"></p>
+        </div>
+        <h3>📜 History</h3>
+        <div id="withdrawHistory"></div>
+    </div>
+
+    <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('home')"><span>🏠</span><span>Home</span></button>
+        <button class="tab-btn" onclick="switchTab('tasks')"><span>📋</span><span>Tasks</span></button>
+        <button class="tab-btn" onclick="switchTab('referrals')"><span>👥</span><span>Team</span></button>
+        <button class="tab-btn" onclick="switchTab('withdraw')"><span>💸</span><span>Cash out</span></button>
+    </div>
+
+    <script>
+        // ==================== YOUR FIREBASE CONFIG ====================
+        const firebaseConfig = {
+            apiKey: "AIzaSyBIqiyv8RdDsoiyfO9FVDb8Uj3wp26g7DY",
+            authDomain: "application-creation-71a9e.firebaseapp.com",
+            databaseURL: "https://application-creation-71a9e-default-rtdb.firebaseio.com",
+            projectId: "application-creation-71a9e",
+            storageBucket: "application-creation-71a9e.firebasestorage.app",
+            messagingSenderId: "705808831621",
+            appId: "1:705808831621:web:521d1080b8f1fdc3e845ec",
+            measurementId: "G-XRYRR1MM8P"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const auth = firebase.auth();
+        
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        
+        let currentUser = null;
+        let userId = null;
+        let settings = {
+            minWithdrawal: 1000,
+            exchangeRate: 1000,
+            adReward: 1000,
+            dailyAdLimit: 5000,
+            directReferralBonus: 500,
+            agentReferralBonus: 1000,
+            masterAgentReferralBonus: 2000,
+            agentThreshold: 25,
+            masterAgentThreshold: 100
+        };
+        
+        function showToast(msg) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        async function loadSettings() {
+            try {
+                const snap = await database.ref('settings').once('value');
+                if (snap.exists()) settings = { ...settings, ...snap.val() };
+                document.getElementById('minWithdrawDisplay').textContent = settings.minWithdrawal;
+            } catch(e) { console.error("Settings error:", e); }
+        }
+        
+        function getUserTier(referralCount) {
+            if (referralCount >= settings.masterAgentThreshold) return 'master';
+            if (referralCount >= settings.agentThreshold) return 'agent';
+            return 'user';
+        }
+        
+        function getReferralBonus(tier) {
+            switch(tier) {
+                case 'master': return settings.masterAgentReferralBonus;
+                case 'agent': return settings.agentReferralBonus;
+                default: return settings.directReferralBonus;
+            }
+        }
+        
+        function listenUser(uid) {
+            const userRef = database.ref(`users/${uid}`);
+            userRef.on('value', async (snap) => {
+                if (snap.exists()) {
+                    currentUser = snap.val();
+                    updateUI();
+                    updateReferralUI();
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                } else {
+                    await userRef.set({
+                        coins: 0,
+                        xp: 0,
+                        level: 1,
+                        clickPower: 1,
+                        passiveIncome: 0,
+                        directReferrals: 0,
+                        teamCount: 0,
+                        commissionEarned: 0,
+                        weeklyEarnings: 0,
+                        lastWeeklyReset: Date.now(),
+                        referrerId: null,
+                        adsWatchedToday: 0,
+                        lastAdReset: Date.now(),
+                        createdAt: Date.now(),
+                        updatedAt: Date.now()
+                    });
+                }
+            });
+        }
+        
+        function updateUI() {
+            if (!currentUser) return;
+            document.getElementById('balanceDisplay').textContent = (currentUser.coins || 0).toLocaleString();
+            document.getElementById('withdrawBalance').textContent = (currentUser.coins || 0).toLocaleString();
+            document.getElementById('levelDisplay').textContent = currentUser.level || 1;
+            document.getElementById('xpDisplay').textContent = currentUser.xp || 0;
+            document.getElementById('clickPowerDisplay').textContent = currentUser.clickPower || 1;
+            document.getElementById('passiveIncomeDisplay').textContent = (currentUser.passiveIncome || 0).toFixed(1);
+            document.getElementById('adStatus').textContent = `📊 Today: ${currentUser.adsWatchedToday || 0}/${settings.dailyAdLimit} ads`;
+        }
+        
+        function updateReferralUI() {
+            if (!currentUser) return;
+            const directReferrals = currentUser.directReferrals || 0;
+            const teamCount = currentUser.teamCount || 0;
+            const commissionEarned = currentUser.commissionEarned || 0;
+            const weeklyEarnings = currentUser.weeklyEarnings || 0;
+            const tier = getUserTier(directReferrals);
+            
+            document.getElementById('directReferrals').textContent = directReferrals;
+            document.getElementById('teamCount').textContent = teamCount;
+            document.getElementById('commissionEarned').textContent = commissionEarned.toLocaleString();
+            document.getElementById('weeklyEarnings').textContent = weeklyEarnings.toLocaleString();
+            
+            const agentCard = document.getElementById('agentCard');
+            if (tier !== 'user') {
+                agentCard.style.display = 'block';
+                const bonusAmount = getReferralBonus(tier);
+                document.getElementById('agentBonusInfo').innerHTML = `🎁 You earn ${bonusAmount.toLocaleString()} coins per referral!`;
+                if (tier === 'master') {
+                    document.getElementById('agentBonusInfo').innerHTML += `<br>🏆 Master Agent: 10% weekly bonus on team earnings!`;
+                }
+            } else {
+                agentCard.style.display = 'none';
+            }
+        }
+        
+        window.switchTab = function(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId + 'Tab').classList.add('active');
+            event.target.closest('.tab-btn').classList.add('active');
+            tg.HapticFeedback.impactOccurred('light');
+        };
+        
+        window.completeTask = async function(taskId, reward) {
+            if (!currentUser) {
+                showToast("Loading...");
+                return;
+            }
+            tg.HapticFeedback.impactOccurred('light');
+            
+            if (confirm(`Complete this task to earn ${reward.toLocaleString()} coins?`)) {
+                await database.ref(`users/${userId}`).transaction(user => {
+                    if (user) {
+                        user.coins = (user.coins || 0) + reward;
+                        user.xp = (user.xp || 0) + 10;
+                        if (user.xp >= 1000) {
+                            user.level = (user.level || 1) + 1;
+                            user.xp = 0;
+                            showToast(`🎉 Level up! Now level ${user.level}`);
+                        }
+                    }
+                    return user;
+                });
+                showToast(`🎉 +${reward.toLocaleString()} coins!`);
+            }
+        };
+        
+        document.getElementById('clickCoin').addEventListener('click', async () => {
+            if (!currentUser) return;
+            const clickValue = currentUser.clickPower || 1;
+            await database.ref(`users/${userId}`).transaction(user => {
+                if (user) {
+                    user.coins = (user.coins || 0) + clickValue;
+                    user.xp = (user.xp || 0) + 1;
+                    if (user.xp >= 1000) {
+                        user.level = (user.level || 1) + 1;
+                        user.xp = 0;
+                        showToast(`🎉 Level up! Now level ${user.level}`);
+                    }
+                }
+                return user;
+            });
+            tg.HapticFeedback.impactOccurred('medium');
+        });
+        
+        const upgrades = [
+            { id: 'click1', name: '💪 Stronger Finger', type: 'click', power: 1, cost: 50 },
+            { id: 'click2', name: '⚡ Turbo Tap', type: 'click', power: 5, cost: 500 },
+            { id: 'passive1', name: '⛏️ Auto Miner', type: 'passive', power: 0.1, cost: 100 },
+            { id: 'passive2', name: '🏭 Mining Farm', type: 'passive', power: 1, cost: 1100 }
+        ];
+        
+        function renderUpgrades() {
+            const container = document.getElementById('upgradesList');
+            if (!container) return;
+            container.innerHTML = '';
+            upgrades.forEach(up => {
+                const disabled = !currentUser || (currentUser.coins || 0) < up.cost;
+                container.innerHTML += `
+                    <div class="task-item">
+                        <div><strong>${up.name}</strong><br><small>+${up.power} ${up.type === 'click' ? 'per click' : 'per sec'}</small></div>
+                        <button class="btn-small" onclick="buyUpgrade('${up.id}', ${up.cost}, '${up.type}', ${up.power})" ${disabled ? 'disabled' : ''}>
+                            ${up.cost} 🪙
+                        </button>
+                    </div>
+                `;
+            });
+        }
+        
+        window.buyUpgrade = async function(upId, cost, type, power) {
+            if (!currentUser || (currentUser.coins || 0) < cost) {
+                showToast('❌ Not enough coins');
+                return;
+            }
+            await database.ref(`users/${userId}`).transaction(user => {
+                if (user && user.coins >= cost) {
+                    user.coins -= cost;
+                    if (type === 'click') {
+                        user.clickPower = (user.clickPower || 1) + power;
+                    } else {
+                        user.passiveIncome = (user.passiveIncome || 0) + power;
+                    }
+                }
+                return user;
+            });
+            showToast('✅ Upgrade purchased!');
+            tg.HapticFeedback.notificationOccurred('success');
+        };
+        
+        setInterval(() => {
+            if (currentUser && currentUser.passiveIncome > 0) {
+                database.ref(`users/${userId}`).transaction(user => {
+                    if (user) user.coins = (user.coins || 0) + (user.passiveIncome || 0);
+                    return user;
+                });
+            }
+        }, 1000);
+        
+        let adCooldown = false;
+        async function canWatchAd() {
+            if (!currentUser) return false;
+            const now = Date.now();
+            const today = new Date(now).toDateString();
+            const lastReset = currentUser.lastAdReset ? new Date(currentUser.lastAdReset).toDateString() : null;
+            if (lastReset !== today) {
+                await database.ref(`users/${userId}`).update({ adsWatchedToday: 0, lastAdReset: now });
+                currentUser.adsWatchedToday = 0;
+            }
+            return (currentUser.adsWatchedToday || 0) < settings.dailyAdLimit;
+        }
+        
+        document.getElementById('watchAdBtn').addEventListener('click', async () => {
+            if (!currentUser) return;
+            if (adCooldown) { showToast("⏳ Wait 30 seconds"); return; }
+            if (!await canWatchAd()) { showToast(`📊 Daily limit reached`); return; }
+            
+            adCooldown = true;
+            const btn = document.getElementById('watchAdBtn');
+            btn.disabled = true;
+            
+            let countdown = 5;
+            btn.textContent = `Watching ad... ${countdown}s`;
+            const interval = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    btn.textContent = `Watching ad... ${countdown}s`;
+                } else {
+                    clearInterval(interval);
+                }
+            }, 1000);
+            
+            await new Promise(r => setTimeout(r, 5000));
+            
+            await database.ref(`users/${userId}`).transaction(user => {
+                if (user) {
+                    user.coins = (user.coins || 0) + settings.adReward;
+                    user.adsWatchedToday = (user.adsWatchedToday || 0) + 1;
+                }
+                return user;
+            });
+            
+            showToast(`🎉 +${settings.adReward} coins!`);
+            tg.HapticFeedback.notificationOccurred('success');
+            
+            setTimeout(() => { adCooldown = false; }, 30000);
+            btn.disabled = false;
+            btn.textContent = '📺 Watch Ad (+1000 coins)';
+        });
+        
+        async function initReferral() {
+            const botUsername = "OibbBot";
+            const link = `https://t.me/${botUsername}/start?startapp=ref_${userId}`;
+            document.getElementById('referralLinkInput').value = link;
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const startParam = urlParams.get('tgWebAppStartParam');
+            if (startParam && startParam.startsWith('ref_')) {
+                const referrerId = startParam.replace('ref_', '');
+                if (referrerId !== userId) {
+                    await processReferral(referrerId);
+                }
+            }
+        }
+        
+        async function processReferral(referrerId) {
+            const referrerSnap = await database.ref(`users/${referrerId}`).once('value');
+            const referrer = referrerSnap.val();
+            const directReferrals = referrer?.directReferrals || 0;
+            const tier = getUserTier(directReferrals);
+            const bonusAmount = getReferralBonus(tier);
+            
+            await database.ref(`users/${referrerId}`).transaction(user => {
+                if (user) {
+                    user.coins = (user.coins || 0) + bonusAmount;
+                    user.directReferrals = (user.directReferrals || 0) + 1;
+                    user.teamCount = (user.teamCount || 0) + 1;
+                    user.commissionEarned = (user.commissionEarned || 0) + bonusAmount;
+                    user.weeklyEarnings = (user.weeklyEarnings || 0) + bonusAmount;
+                }
+                return user;
+            });
+            
+            await database.ref(`users/${userId}`).update({ referrerId });
+            showToast(`🎉 Welcome! You were referred and get 500 bonus coins!`);
+            
+            await database.ref(`users/${userId}`).transaction(user => {
+                if (user) user.coins = (user.coins || 0) + 500;
+                return user;
+            });
+        }
+        
+        window.copyReferralLink = function() {
+            const input = document.getElementById('referralLinkInput');
+            input.select();
+            navigator.clipboard.writeText(input.value);
+            showToast('✅ Link copied!');
+        };
+        
+        window.shareReferralLink = function() {
+            const link = document.getElementById('referralLinkInput').value;
+            tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=Join me and earn crypto with MyEarnBot! 🚀`);
+        };
+        
+        document.getElementById('withdrawBtn').addEventListener('click', async () => {
+            const amount = parseInt(document.getElementById('withdrawAmount').value);
+            const method = document.getElementById('withdrawMethod').value;
+            const accountNumber = document.getElementById('accountNumber').value.trim();
+            const accountName = document.getElementById('accountName').value.trim();
+            const errorEl = document.getElementById('withdrawError');
+            
+            if (!method) { errorEl.textContent = 'Select method'; errorEl.style.display='block'; return; }
+            if (!amount || amount < settings.minWithdrawal) { errorEl.textContent = `Minimum ${settings.minWithdrawal} coins`; errorEl.style.display='block'; return; }
+            if (!accountNumber) { errorEl.textContent = 'Enter account'; errorEl.style.display='block'; return; }
+            if (!currentUser || (currentUser.coins || 0) < amount) { errorEl.textContent = 'Insufficient balance'; errorEl.style.display='block'; return; }
+            
+            errorEl.style.display = 'none';
+            const btn = document.getElementById('withdrawBtn');
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+            
+            try {
+                const usdAmount = (amount / settings.exchangeRate).toFixed(2);
+                
+                await database.ref('withdrawals').push().set({
+                    userId: userId,
+                    amount: amount,
+                    usdAmount: `${usdAmount} USD`,
+                    method: method,
+                    accountNumber: accountNumber,
+                    accountName: accountName,
+                    status: 'pending',
+                    requestedAt: Date.now()
+                });
+                
+                await database.ref(`users/${userId}`).transaction(user => {
+                    if (user) user.coins = (user.coins || 0) - amount;
+                    return user;
+                });
+                
+                showToast('✅ Withdrawal request submitted! We will process within 24-48 hours.');
+                tg.HapticFeedback.notificationOccurred('success');
+                
+                document.getElementById('withdrawAmount').value = '';
+                document.getElementById('accountNumber').value = '';
+                document.getElementById('accountName').value = '';
+                document.getElementById('withdrawMethod').value = '';
+                
+            } catch(e) {
+                showToast('❌ Error submitting request');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Request Withdrawal';
+            }
+        });
+        
+        function loadWithdrawalHistory() {
+            if (!userId) return;
+            database.ref('withdrawals').orderByChild('userId').equalTo(userId).on('value', snap => {
+                const data = snap.val();
+                const container = document.getElementById('withdrawHistory');
+                container.innerHTML = '';
+                if (!data) { container.innerHTML = '<p>No withdrawals yet</p>'; return; }
+                Object.entries(data).sort((a,b) => b[1].requestedAt - a[1].requestedAt).forEach(([id, w]) => {
+                    container.innerHTML += `
+                        <div class="history-item ${w.status}">
+                            <div><strong>${w.status.toUpperCase()}</strong> - ${new Date(w.requestedAt).toLocaleDateString()}</div>
+                            <div>${w.amount.toLocaleString()} coins via ${w.method}</div>
+                        </div>
+                    `;
+                });
+            });
+        }
+        
+        async function calculateWeeklyBonuses() {
+            const now = Date.now();
+            const oneWeek = 7 * 24 * 60 * 60 * 1000;
+            const usersSnap = await database.ref('users').once('value');
+            const users = usersSnap.val() || {};
+            
+            for (const [uid, user] of Object.entries(users)) {
+                const lastReset = user.lastWeeklyReset || 0;
+                const directReferrals = user.directReferrals || 0;
+                const tier = getUserTier(directReferrals);
+                
+                if (tier === 'master' && (now - lastReset) >= oneWeek) {
+                    const weeklyBonus = (user.weeklyEarnings || 0) * 0.1;
+                    await database.ref(`users/${uid}`).transaction(u => {
+                        if (u) {
+                            u.coins = (u.coins || 0) + weeklyBonus;
+                            u.weeklyEarnings = 0;
+                            u.lastWeeklyReset = now;
+                        }
+                        return u;
+                    });
+                    console.log(`Weekly bonus of ${weeklyBonus} awarded to ${uid}`);
+                }
+            }
+        }
+        
+        setInterval(calculateWeeklyBonuses, 60 * 60 * 1000);
+        
+        async function init() {
+            try {
+                const existing = auth.currentUser;
+                if (existing) {
+                    userId = existing.uid;
+                    await loadSettings();
+                    listenUser(userId);
+                    renderUpgrades();
+                    initReferral();
+                    loadWithdrawalHistory();
+                    calculateWeeklyBonuses();
+                    return;
+                }
+                const cred = await auth.signInAnonymously();
+                userId = cred.user.uid;
+                await loadSettings();
+                listenUser(userId);
+                renderUpgrades();
+                initReferral();
+                loadWithdrawalHistory();
+                calculateWeeklyBonuses();
+                console.log("✅ Connected to Firebase");
+            } catch(e) {
+                console.error("Auth error:", e);
+                document.getElementById('loadingOverlay').innerHTML = `
+                    <div>❌ Connection failed</div>
+                    <div style="font-size:12px">${e.message}</div>
+                    <button onclick="location.reload()" style="margin-top:15px;padding:10px 20px;border-radius:30px;background:#40a7e3;color:white;border:none;">Retry</button>
+                `;
+            }
+        }
+        init();
+        setInterval(() => { if (currentUser) renderUpgrades(); }, 2000);
+    </script>
+</body>
+</html>
