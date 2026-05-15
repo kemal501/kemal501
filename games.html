@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>BARCA LIVE – Game Legacy Hall</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #004D98 0%, #A50044 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .navbar {
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            margin-left: 20px;
+            padding: 8px 15px;
+            border-radius: 20px;
+            transition: 0.3s;
+        }
+        .nav-links a:hover {
+            background: #FFD700;
+            color: #004D98;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 100px 20px 40px;
+        }
+        .balance-card {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 30px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .balance-amount {
+            font-size: 36px;
+            font-weight: bold;
+            color: #FFD700;
+        }
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        .game-card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+        .game-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255,255,255,0.2);
+        }
+        .game-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        .game-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .bet-input {
+            width: 120px;
+            padding: 8px;
+            border-radius: 50px;
+            border: none;
+            text-align: center;
+            margin: 10px 5px;
+        }
+        .play-btn {
+            background: #FFD700;
+            color: #004D98;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .play-btn:hover {
+            transform: scale(1.02);
+        }
+        .result {
+            margin-top: 12px;
+            font-size: 13px;
+            background: rgba(0,0,0,0.3);
+            padding: 8px;
+            border-radius: 10px;
+        }
+        @media (max-width: 768px) {
+            .games-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .game-card {
+                padding: 15px;
+            }
+            .game-icon {
+                font-size: 36px;
+            }
+            .game-title {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="logo">🔵🔴 BARCA LIVE</div>
+        <div class="nav-links">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="rooms.html">Voice Rooms</a>
+            <a href="games.html">Games</a>
+            <a href="wallet.html">Wallet</a>
+            <a href="#" onclick="logout()">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="balance-card">
+            <div>💰 Your Balance</div>
+            <div class="balance-amount" id="balance">0</div>
+            <div id="balance-usd">$0 USD</div>
+        </div>
+
+        <div class="games-grid" id="gamesGrid"></div>
+    </div>
+
+    <script>
+        // ==================== CONFIGURATION ====================
+        const API_URL = localStorage.getItem('API_URL') || 'https://barca-live-api.up.railway.app';
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+
+        // ---------- ALL GAMES (from screenshots + original) ----------
+        const gamesList = [
+            // Main requested games
+            { icon: "🐫", name: "PyramidSlots", minBet: 10, maxBet: 10000 },
+            { icon: "🐔", name: "ChickenRoad", minBet: 5, maxBet: 5000 },
+            { icon: "🎣", name: "FishingStar", minBet: 10, maxBet: 8000 },
+            { icon: "🪄", name: "MagicSlot", minBet: 20, maxBet: 20000 },
+            { icon: "🍬", name: "Yummy", minBet: 5, maxBet: 3000 },
+            { icon: "💎", name: "CrazyGems", minBet: 15, maxBet: 15000 },
+            { icon: "🏛️", name: "Olympus", minBet: 25, maxBet: 25000 },
+            { icon: "🎧", name: "DJLive", minBet: 10, maxBet: 10000 },
+            { icon: "🍀", name: "Lucky77Pro", minBet: 7, maxBet: 7777 },
+            { icon: "🍍", name: "GoldenPinata", minBet: 10, maxBet: 12000 },
+            { icon: "🌻", name: "GoldenFlower", minBet: 10, maxBet: 10000 },
+            { icon: "🐯", name: "FortuneTiger", minBet: 20, maxBet: 20000 },
+            // Extra games from screenshots
+            { icon: "🌊", name: "Ocean Hunt", minBet: 10, maxBet: 10000 },
+            { icon: "🐒", name: "Jungle Hunt", minBet: 10, maxBet: 10000 },
+            { icon: "👑", name: "Royal Battle", minBet: 15, maxBet: 15000 },
+            { icon: "🍉", name: "Fruit Party", minBet: 5, maxBet: 5000 },
+            { icon: "🐟", name: "Fishing Tycoon", minBet: 20, maxBet: 20000 },
+            { icon: "✨", name: "Gems Sky", minBet: 10, maxBet: 12000 },
+            { icon: "🎰", name: "Crazy 777", minBet: 7, maxBet: 7777 },
+            { icon: "🌊", name: "Deep Sea", minBet: 10, maxBet: 10000 },
+            { icon: "🔥", name: "FirestormJoker", minBet: 10, maxBet: 15000 },
+            { icon: "🐉", name: "Dragon Ball", minBet: 25, maxBet: 25000 },
+            // Original games (optional – keep or remove)
+            { icon: "🎰", name: "Classic Slots", minBet: 10, maxBet: 10000 },
+            { icon: "🎲", name: "Dice Roll", minBet: 5, maxBet: 5000, isDice: true },
+            { icon: "🎡", name: "Roulette", minBet: 10, maxBet: 10000, isRoulette: true },
+            { icon: "🎁", name: "Daily Free Spin", minBet: 0, maxBet: 0, isFree: true }
+        ];
+
+        // Update balance display
+        async function updateBalance() {
+            try {
+                const res = await fetch(`${API_URL}/api/coins/balance/${user.id || user.uid}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('balance').innerText = data.balance.toLocaleString();
+                    document.getElementById('balance-usd').innerText = `$${data.balanceUSD} USD`;
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        // Generic slot play (uses /api/games/slots)
+        async function playSlot(gameName, betAmount) {
+            try {
+                const res = await fetch(`${API_URL}/api/games/slots`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ userId: user.id || user.uid, betAmount: betAmount })
+                });
+                const data = await res.json();
+                const resultDiv = document.getElementById(`result-${gameName.replace(/\s/g, '')}`);
+                if (resultDiv) {
+                    if (data.success) {
+                        resultDiv.innerHTML = `${data.reels.join(' | ')}<br>Bet: ${data.betAmount} | Win: ${data.winAmount}<br>${data.message}`;
+                    } else {
+                        resultDiv.innerHTML = `Error: ${data.error}`;
+                    }
+                }
+                updateBalance();
+            } catch(err) {
+                alert('Connection error. Please try again.');
+            }
+        }
+
+        // Dice roll
+        async function playDice(gameName, betAmount) {
+            const prediction = prompt("Predict 'over' ( >3 ), 'under' ( <4 ), or a number 1-6", "over");
+            if (!prediction) return;
+            let value = null;
+            if (prediction === 'number') {
+                value = parseInt(prompt("Enter a number between 1 and 6", "3"));
+                if (isNaN(value) || value < 1 || value > 6) {
+                    alert("Invalid number");
+                    return;
+                }
+            }
+            try {
+                const res = await fetch(`${API_URL}/api/games/dice`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ userId: user.id || user.uid, betAmount: betAmount, prediction: prediction, value: value })
+                });
+                const data = await res.json();
+                const resultDiv = document.getElementById(`result-${gameName.replace(/\s/g, '')}`);
+                if (resultDiv) {
+                    resultDiv.innerHTML = `🎲 Roll: ${data.diceRoll}<br>${data.message}`;
+                }
+                updateBalance();
+            } catch(err) {
+                alert('Connection error');
+            }
+        }
+
+        // Roulette
+        async function playRoulette(gameName, betAmount) {
+            const betType = prompt("Bet type: 'color' (red/black) or 'number' (0-36) or 'even_odd'", "color");
+            if (!betType) return;
+            let betValue = prompt("Value: for color: red/black; for number: 0-36; for even_odd: even/odd", "red");
+            if (!betValue) return;
+            try {
+                const res = await fetch(`${API_URL}/api/games/roulette`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ userId: user.id || user.uid, betAmount: betAmount, betType: betType, betValue: betValue })
+                });
+                const data = await res.json();
+                const resultDiv = document.getElementById(`result-${gameName.replace(/\s/g, '')}`);
+                if (resultDiv) {
+                    resultDiv.innerHTML = `🎡 Winning number: ${data.winningNumber} (${data.winningColor})<br>${data.message}`;
+                }
+                updateBalance();
+            } catch(err) {
+                alert('Connection error');
+            }
+        }
+
+        // Free spin
+        async function claimFreeSpin() {
+            try {
+                const res = await fetch(`${API_URL}/api/games/free-spin`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ userId: user.id || user.uid })
+                });
+                const data = await res.json();
+                const resultDiv = document.getElementById('result-DailyFreeSpin');
+                if (resultDiv) resultDiv.innerHTML = `🎁 ${data.message}`;
+                updateBalance();
+            } catch(err) {
+                alert('Free spin error');
+            }
+        }
+
+        // Render all games
+        function renderGames() {
+            const container = document.getElementById('gamesGrid');
+            container.innerHTML = gamesList.map(game => {
+                if (game.isFree) {
+                    return `
+                        <div class="game-card" style="background: linear-gradient(135deg, #FFD700, #FFA500); color:#004D98;">
+                            <div class="game-icon">${game.icon}</div>
+                            <div class="game-title">${game.name}</div>
+                            <div class="result" id="result-${game.name.replace(/\s/g, '')}">Click button to claim!</div>
+                            <button class="play-btn" onclick="claimFreeSpin()">Claim Free Spin →</button>
+                        </div>
+                    `;
+                } else if (game.isDice) {
+                    return `
+                        <div class="game-card">
+                            <div class="game-icon">${game.icon}</div>
+                            <div class="game-title">${game.name}</div>
+                            <div>💰 Min: ${game.minBet} | Max: ${game.maxBet}</div>
+                            <input type="number" id="bet-${game.name.replace(/\s/g, '')}" class="bet-input" placeholder="Bet" value="${game.minBet}">
+                            <button class="play-btn" onclick="playDice('${game.name}', parseInt(document.getElementById('bet-${game.name.replace(/\s/g, '')}').value))">Roll →</button>
+                            <div class="result" id="result-${game.name.replace(/\s/g, '')}">Click Roll to play</div>
+                        </div>
+                    `;
+                } else if (game.isRoulette) {
+                    return `
+                        <div class="game-card">
+                            <div class="game-icon">${game.icon}</div>
+                            <div class="game-title">${game.name}</div>
+                            <div>💰 Min: ${game.minBet} | Max: ${game.maxBet}</div>
+                            <input type="number" id="bet-${game.name.replace(/\s/g, '')}" class="bet-input" placeholder="Bet" value="${game.minBet}">
+                            <button class="play-btn" onclick="playRoulette('${game.name}', parseInt(document.getElementById('bet-${game.name.replace(/\s/g, '')}').value))">Spin →</button>
+                            <div class="result" id="result-${game.name.replace(/\s/g, '')}">Click Spin to play</div>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="game-card">
+                            <div class="game-icon">${game.icon}</div>
+                            <div class="game-title">${game.name}</div>
+                            <div>💰 Min: ${game.minBet} | Max: ${game.maxBet}</div>
+                            <input type="number" id="bet-${game.name.replace(/\s/g, '')}" class="bet-input" placeholder="Bet" value="${game.minBet}">
+                            <button class="play-btn" onclick="playSlot('${game.name}', parseInt(document.getElementById('bet-${game.name.replace(/\s/g, '')}').value))">Play →</button>
+                            <div class="result" id="result-${game.name.replace(/\s/g, '')}">Click Play to start</div>
+                        </div>
+                    `;
+                }
+            }).join('');
+        }
+
+        // Expose functions globally
+        window.playSlot = playSlot;
+        window.playDice = playDice;
+        window.playRoulette = playRoulette;
+        window.claimFreeSpin = claimFreeSpin;
+        window.logout = () => { localStorage.clear(); window.location.href = 'index.html'; };
+
+        renderGames();
+        updateBalance();
+    </script>
+</body>
+</html>

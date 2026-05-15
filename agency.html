@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html><head><title>Agency</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<div class="navbar"><div class="logo">👥 Agency</div><div class="nav-links"><a href="dashboard.html">Dashboard</a><a href="#" onclick="logout()">Logout</a></div></div>
+<div class="container" id="agencyContent">Loading...</div>
+<script>const API_URL='https://barca-live-api.up.railway.app';const token=localStorage.getItem('token');const user=JSON.parse(localStorage.getItem('user')||'{}');if(!token)location.href='login.html';
+async function loadAgency(){try{const res=await fetch(`${API_URL}/api/agency/dashboard/${user.id||user.uid}`,{headers:{'Authorization':`Bearer ${token}`}});const data=await res.json();if(data.success){document.getElementById('agencyContent').innerHTML=`<div class="card"><h3>${data.agent.agencyName}</h3><p>Commission: ${data.agent.commissionRate}%</p><button class="btn" onclick="registerAgent()">Become Agent</button></div>`;}else{document.getElementById('agencyContent').innerHTML=`<div class="card"><p>Not an agent. <button class="btn" onclick="registerAgent()">Become Agent</button></p></div>`;}}catch(e){document.getElementById('agencyContent').innerHTML='<div class="card">Error loading agency data</div>';}}
+async function registerAgent(){const res=await fetch(`${API_URL}/api/agency/register`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({userId:user.id||user.uid})});const data=await res.json();alert(data.message);loadAgency();}
+function logout(){localStorage.clear();window.location.href='index.html';}
+loadAgency();</script>
+</body></html>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+  <title>Admin Coin Generator</title>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+
+  <style>
+
+    body{
+      background:#0f172a;
+      color:white;
+      font-family:Arial;
+      padding:30px;
+    }
+
+    .card{
+      max-width:400px;
+      background:#1e293b;
+      padding:25px;
+      border-radius:15px;
+    }
+
+    input{
+      width:100%;
+      padding:12px;
+      margin-top:10px;
+      border:none;
+      border-radius:10px;
+      background:#334155;
+      color:white;
+    }
+
+    button{
+      width:100%;
+      margin-top:15px;
+      padding:12px;
+      border:none;
+      border-radius:10px;
+      background:#2563eb;
+      color:white;
+      font-size:16px;
+      cursor:pointer;
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+<div class="card">
+
+  <h2>👑 Coin Generator</h2>
+
+  <input
+    type="text"
+    id="targetUid"
+    placeholder="Target User UID"
+  >
+
+  <input
+    type="number"
+    id="amount"
+    placeholder="Coin Amount"
+  >
+
+  <input
+    type="text"
+    id="reason"
+    placeholder="Reason"
+  >
+
+  <button onclick="generateCoins()">
+    Generate Coins
+  </button>
+
+</div>
+
+<script>
+
+const firebaseConfig = {
+
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+
+};
+
+firebase.initializeApp(firebaseConfig);
+
+async function generateCoins(){
+
+  const targetUid =
+    document.getElementById("targetUid").value;
+
+  const amount =
+    Number(document.getElementById("amount").value);
+
+  const reason =
+    document.getElementById("reason").value;
+
+  try{
+
+    const generateCoinsFunction =
+      firebase.functions()
+      .httpsCallable("generateCoins");
+
+    const result =
+      await generateCoinsFunction({
+        targetUid,
+        amount,
+        reason
+      });
+
+    alert(result.data.message);
+
+  }catch(error){
+
+    console.error(error);
+
+    alert(error.message);
+
+  }
+
+}
+
+</script>
+
+</body>
+</html>

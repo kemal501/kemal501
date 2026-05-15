@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html><head><title>Voice Rooms</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<div class="navbar"><div class="logo">🔵🔴 Voice Rooms</div><div class="nav-links"><a href="dashboard.html">Dashboard</a><a href="#" onclick="logout()">Logout</a></div></div>
+<div class="container" id="roomsList">Loading...</div>
+<script>const API_URL='https://barca-live-api.up.railway.app';const token=localStorage.getItem('token');if(!token)location.href='login.html';const user=JSON.parse(localStorage.getItem('user')||'{}');
+async function loadRooms(){const res=await fetch(`${API_URL}/api/rooms`);const data=await res.json();if(data.success){document.getElementById('roomsList').innerHTML=data.rooms.map(room=>`<div class="card"><h3>${room.name}</h3><p>${room.type} room | ${room.vipSeats} VIP + ${room.regularSeats} regular</p><button class="btn" onclick="joinRoom('${room.id}')">Join Room</button></div>`).join('');}}
+async function joinRoom(roomId){const res=await fetch(`${API_URL}/api/rooms/join`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({userId:user.id||user.uid,roomId})});const data=await res.json();alert(data.message);}
+function logout(){localStorage.clear();window.location.href='index.html';}
+loadRooms();</script>
+</body></html>

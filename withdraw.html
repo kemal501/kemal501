@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html><head><title>Withdraw</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<div class="navbar"><div class="logo">💸 Withdraw</div><div class="nav-links"><a href="dashboard.html">Dashboard</a><a href="#" onclick="logout()">Logout</a></div></div>
+<div class="container"><div class="card"><h3>Balance: <span id="balance">0</span> coins</h3><input id="amountUSD" placeholder="Amount USD (min $10)"><select id="method"><option>paypal</option><option>bank</option><option>crypto</option></select><button class="btn" onclick="withdraw()">Request Withdrawal</button></div></div>
+<script>const API_URL='https://barca-live-api.up.railway.app';const token=localStorage.getItem('token');const user=JSON.parse(localStorage.getItem('user')||'{}');if(!token)location.href='login.html';
+async function loadBalance(){const res=await fetch(`${API_URL}/api/coins/balance/${user.id||user.uid}`,{headers:{'Authorization':`Bearer ${token}`}});const data=await res.json();document.getElementById('balance').innerText=data.balance;}
+async function withdraw(){const usd=parseFloat(document.getElementById('amountUSD').value);const method=document.getElementById('method').value;if(usd<10){alert('Minimum $10');return;}const res=await fetch(`${API_URL}/api/withdraw/request`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({userId:user.id||user.uid,amountUSD:usd,method})});const data=await res.json();alert(`Net: $${data.netAmount} after fee`);loadBalance();}
+loadBalance();function logout(){localStorage.clear();window.location.href='index.html';}</script>
+</body></html>

@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html><head><title>Wallet</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<div class="navbar"><div class="logo">💰 Wallet</div><div class="nav-links"><a href="dashboard.html">Dashboard</a><a href="#" onclick="logout()">Logout</a></div></div>
+<div class="container"><div class="card"><h3>Balance: <span id="balance">0</span> coins (<span id="balanceUSD">0</span> USD)</h3></div>
+<div class="card"><h3>Buy Coins</h3><select id="amount"><option value="10">$10 – 1000 coins</option><option value="25">$25 – 2500 coins</option><option value="50">$50 – 5000 coins</option></select><button class="btn" onclick="buyCoins()">Buy</button></div></div>
+<script>const API_URL='https://barca-live-api.up.railway.app';const token=localStorage.getItem('token');const user=JSON.parse(localStorage.getItem('user')||'{}');if(!token)location.href='login.html';
+async function loadBalance(){const res=await fetch(`${API_URL}/api/coins/balance/${user.id||user.uid}`,{headers:{'Authorization':`Bearer ${token}`}});const data=await res.json();document.getElementById('balance').innerText=data.balance;document.getElementById('balanceUSD').innerText=data.balanceUSD;}
+async function buyCoins(){const usd=parseInt(document.getElementById('amount').value);const res=await fetch(`${API_URL}/api/coins/buy`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({userId:user.id||user.uid,amountUSD:usd,paymentMethod:'card'})});const data=await res.json();alert(`Added ${data.coinsAdded} coins`);loadBalance();}
+loadBalance();function logout(){localStorage.clear();window.location.href='index.html';}</script>
+</body></html>

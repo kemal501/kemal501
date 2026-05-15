@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html><head><title>Register</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<div class="navbar"><div class="logo">🔵🔴 BARCA LIVE</div><div class="nav-links"><a href="index.html">Home</a><a href="login.html">Login</a></div></div>
+<div class="container" style="max-width: 500px;">
+  <div class="card"><h2>Create Account</h2><div id="error" class="error"></div>
+    <input id="username" placeholder="Username"><input id="identifier" placeholder="Email or Phone"><input id="password" type="password" placeholder="Password"><input id="confirm" type="password" placeholder="Confirm password"><select id="gender"><option>prefer_not_to_say</option><option>male</option><option>female</option></select><input id="referral" placeholder="Referral code (optional)"><button class="btn" onclick="register()" style="width:100%">Register</button><p>Already have an account? <a href="login.html">Login</a></p>
+  </div>
+</div>
+<script>const API_URL='https://barca-live-api.up.railway.app';async function register(){const u=document.getElementById('username').value,i=document.getElementById('identifier').value,p=document.getElementById('password').value,c=document.getElementById('confirm').value;if(p!==c){alert('Passwords mismatch');return;}const isEmail=i.includes('@');const body={username:u,password:p,gender:document.getElementById('gender').value,referralCode:document.getElementById('referral').value};if(isEmail)body.email=i;else body.phone=i;const res=await fetch(`${API_URL}/api/auth/register`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await res.json();if(data.success){localStorage.setItem('token',data.token);localStorage.setItem('user',JSON.stringify(data.user));window.location.href='kyc.html';}else document.getElementById('error').innerText=data.error;}</script>
+</body>
+</html>

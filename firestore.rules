@@ -1,0 +1,27 @@
+rules_version = '2';
+
+service cloud.firestore {
+
+  match /databases/{database}/documents {
+
+    // Users
+    match /users/{userId} {
+
+      allow read: if request.auth != null;
+
+      allow update: if request.auth != null
+        && request.auth.uid == userId;
+
+      allow create: if request.auth != null;
+    }
+
+    // Coin Logs
+    match /coin_logs/{logId} {
+
+      allow read: if request.auth != null;
+
+      // ONLY CLOUD FUNCTIONS CAN WRITE
+      allow write: if false;
+    }
+  }
+}

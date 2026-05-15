@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "953289869545",
+    "project_id": "website-a889d",
+    "storage_bucket": "website-a889d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:953289869545:android:fe68911dd58967e44b4878",
+        "android_client_info": {
+          "package_name": "Com.Barcalive.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASrRnI-ga17EFZDqhDFJKgWI6t7BCwa1E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
