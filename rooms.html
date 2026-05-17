@@ -1,11 +1,164 @@
 <!DOCTYPE html>
-<html><head><title>Voice Rooms</title><link rel="stylesheet" href="style.css"></head>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>BARCA LIVE – Voice Room</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-functions-compat.js"></script>
+    <script src="script.js"></script>
+    <script src="room.js" defer></script>
+    <style>
+        .room-container {
+            max-width: 1400px;
+            margin: 80px auto 20px;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+        }
+        .seats-area {
+            background: rgba(0,0,0,0.3);
+            border-radius: 30px;
+            padding: 20px;
+        }
+        .seat-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .seat {
+            background: rgba(255,255,255,0.15);
+            border-radius: 15px;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .seat.vip {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #004D98;
+            border: 2px solid gold;
+        }
+        .seat.occupied {
+            background: rgba(76, 175, 80, 0.5);
+            cursor: default;
+        }
+        .seat.current-user {
+            border: 3px solid #FFD700;
+            box-shadow: 0 0 10px gold;
+        }
+        .seat-number {
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .seat-username {
+            font-size: 12px;
+            margin-top: 5px;
+            word-break: break-word;
+        }
+        .mic-icon {
+            position: absolute;
+            top: 5px;
+            right: 8px;
+            font-size: 12px;
+        }
+        .chat-area {
+            background: rgba(0,0,0,0.3);
+            border-radius: 30px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 15px;
+        }
+        .chat-message {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .chat-input-area {
+            display: flex;
+            gap: 10px;
+        }
+        .chat-input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 25px;
+            border: none;
+        }
+        .mic-control {
+            margin-top: 15px;
+            text-align: center;
+        }
+        .mic-btn {
+            background: #FFD700;
+            color: #004D98;
+            padding: 10px 20px;
+            border-radius: 50px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .leave-btn {
+            background: #A50044;
+            color: white;
+            margin-left: 10px;
+        }
+        @media (max-width: 900px) {
+            .room-container {
+                grid-template-columns: 1fr;
+            }
+            .seat-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+    </style>
+</head>
 <body>
-<div class="navbar"><div class="logo">🔵🔴 Voice Rooms</div><div class="nav-links"><a href="dashboard.html">Dashboard</a><a href="#" onclick="logout()">Logout</a></div></div>
-<div class="container" id="roomsList">Loading...</div>
-<script>const API_URL='https://barca-live-api.up.railway.app';const token=localStorage.getItem('token');if(!token)location.href='login.html';const user=JSON.parse(localStorage.getItem('user')||'{}');
-async function loadRooms(){const res=await fetch(`${API_URL}/api/rooms`);const data=await res.json();if(data.success){document.getElementById('roomsList').innerHTML=data.rooms.map(room=>`<div class="card"><h3>${room.name}</h3><p>${room.type} room | ${room.vipSeats} VIP + ${room.regularSeats} regular</p><button class="btn" onclick="joinRoom('${room.id}')">Join Room</button></div>`).join('');}}
-async function joinRoom(roomId){const res=await fetch(`${API_URL}/api/rooms/join`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({userId:user.id||user.uid,roomId})});const data=await res.json();alert(data.message);}
-function logout(){localStorage.clear();window.location.href='index.html';}
-loadRooms();</script>
-</body></html>
+    <div class="navbar">
+        <div class="logo">🔵🔴 BARCA LIVE</div>
+        <div class="nav-links">
+            <a href="index.html">Dashboard</a>
+            <a href="rooms.html">Voice Rooms</a>
+            <a href="games.html">Games</a>
+            <a href="wallet.html">Wallet</a>
+            <a href="#" onclick="logout()">Logout</a>
+        </div>
+    </div>
+
+    <div class="room-container">
+        <div class="seats-area">
+            <div class="room-info">
+                <h2 id="room-name">Loading room...</h2>
+                <p id="room-status"></p>
+            </div>
+            <div class="seat-grid" id="seat-grid"></div>
+            <div class="mic-control">
+                <button id="mic-toggle-btn" class="mic-btn">🎤 Turn Mic ON</button>
+                <button id="leave-room-btn" class="mic-btn leave-btn">🚪 Leave Room</button>
+            </div>
+        </div>
+        <div class="chat-area">
+            <h3>💬 Room Chat</h3>
+            <div class="chat-messages" id="chat-messages"></div>
+            <div class="chat-input-area">
+                <input type="text" id="chat-input" class="chat-input" placeholder="Type a message...">
+                <button id="send-chat-btn" class="mic-btn">Send</button>
+            </div>
+            <div id="earnings-info" style="margin-top: 10px; font-size: 12px; text-align: center;"></div>
+        </div>
+    </div>
+</body>
+</html>

@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>BARCA LIVE – Live Streaming Platform</title>
+    <title>BARCA LIVE – Live Streaming</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -41,6 +40,7 @@
                     <div>💎 Diamonds: <span id="diamonds">0</span></div>
                     <button onclick="showBuyCoins()" class="btn small">Buy Coins</button>
                     <button onclick="showWithdraw()" class="btn small">Withdraw</button>
+                    <button onclick="claimDailyBonus()" class="btn small">🎁 Daily Bonus</button>
                 </div>
 
                 <!-- Reseller Section (visible only for resellers) -->
@@ -51,6 +51,18 @@
                         <button onclick="showTransferCoins()" class="btn secondary">Sell Coins to User</button>
                     </div>
                     <div id="packages-list" class="packages-grid"></div>
+                </div>
+
+                <!-- Admin Section (visible only to admin) -->
+                <div id="admin-section" style="display:none;">
+                    <hr>
+                    <h3>👑 Admin Controls – Coin Generation</h3>
+                    <div class="admin-panel">
+                        <input type="text" id="admin-target-uid" placeholder="User UID">
+                        <input type="number" id="admin-coin-amount" placeholder="Amount of coins">
+                        <input type="text" id="admin-reason" placeholder="Reason (optional)">
+                        <button onclick="adminMintCoins()" class="btn primary">Generate Coins</button>
+                    </div>
                 </div>
 
                 <div class="rooms-section">
@@ -107,7 +119,6 @@
         </div>
     </div>
 
-    <!-- Package selection modal -->
     <div id="buy-package-modal" class="modal" style="display:none;">
         <div class="modal-content">
             <span class="close" onclick="closeModal('buy-package-modal')">&times;</span>

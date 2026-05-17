@@ -1,0 +1,152 @@
+// room.js – Voice room seat & chat logic
+const urlParams = new URLSearchParams(window.location.search);
+const roomId = urlParams.get('roomId');
+if (!roomId) {
+    alert('No room specified. Redirecting.');
+    window.location.href = 'rooms.html';
+}
+
+let currentSeatId = null;
+let roomUnsubscribe = null;
+let chatUnsubscribe = null;
+
+async function loadRoom() {
+    if (!currentUser) {
+        setTimeout(loadRoom, 500);
+        return;
+    }
+    if (roomUnsubscribe) roomUnsubscribe();
+    roomUnsubscribe = db.collection('rooms').doc(roomId).onSnapshot(async (doc) => {
+        if (!doc.exists) {
+            alert('Room does not exist');
+            window.location.href = 'rooms.html';
+            return;
+        }
+        const room = doc.data();
+        document.getElementById('room-name').innerText = room.title;
+        renderSeats(room.seats);
+        const mySeat = room.seats.find(s => s.userId === currentUser.uid);
+        if (mySeat) {
+            currentSeatId = mySeat.seatNumber;
+            const btn = document.getElementById('mic-toggle-btn');
+            if (btn) {
+                btn.innerText = mySeat.muted ? '🔇 Turn Mic ON' : '🎤 Turn Mic OFF';
+                btn.style.background = mySeat.muted ? '#888' : '#FFD700';
+            }
+        } else {
+            currentSeatId = null;
+            const btn = document.getElementById('mic-toggle-btn');
+            if (btn) {
+                btn.innerText = '🎤 Turn Mic ON (Not seated)';
+                btn.style.background = '#888';
+            }
+        }
+    });
+
+    if (chatUnsubscribe) chatUnsubscribe();
+    chatUnsubscribe = db.collection('messages').doc(roomId).collection('messages')
+        .orderBy('timestamp', 'asc')
+        .onSnapshot((snapshot) => {
+            const chatDiv = document.getElementById('chat-messages');
+            if (chatDiv) {
+                chatDiv.innerHTML = '';
+                snapshot.forEach(msgDoc => {
+                    const msg = msgDoc.data();
+                    const div = document.createElement('div');
+                    div.className = 'chat-message';
+                    div.innerHTML = `<strong>${msg.senderName}:</strong> ${msg.text}`;
+                    chatDiv.appendChild(div);
+                });
+                chatDiv.scrollTop = chatDiv.scrollHeight;
+            }
+        });
+}
+
+function renderSeats(seats) {
+    const grid = document.getElementById('seat-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    seats.forEach(seat => {
+        const seatDiv = document.createElement('div');
+        seatDiv.className = `seat ${seat.seatNumber <= 4 ? 'vip' : ''} ${seat.userId ? 'occupied' : ''} ${seat.userId === currentUser?.uid ? 'current-user' : ''}`;
+        seatDiv.innerHTML = `
+            <div class="seat-number">${seat.seatNumber}</div>
+            <div class="seat-username">${seat.userId ? (seat.username || 'User') : 'Empty'}</div>
+            ${seat.muted !== undefined ? `<div class="mic-icon">${seat.muted ? '🔇' : '🎤'}</div>` : ''}
+        `;
+        if (!seat.userId) {
+            seatDiv.onclick = () => sitOnSeat(seat.seatNumber);
+        }
+        grid.appendChild(seatDiv);
+    });
+}
+
+async function sitOnSeat(seatNumber) {
+    if (!currentUser) return;
+    const joinFn = functions.httpsCallable('joinRoomSeat');
+    try {
+        await joinFn({ roomId, seatNumber });
+        alert(`You are now sitting on seat ${seatNumber}`);
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+document.getElementById('mic-toggle-btn')?.addEventListener('click', async () => {
+    if (!currentSeatId) {
+        alert('You are not seated. Click an empty seat first.');
+        return;
+    }
+    const roomDoc = await db.collection('rooms').doc(roomId).get();
+    const seat = roomDoc.data().seats.find(s => s.seatNumber === currentSeatId);
+    if (!seat) return;
+    const newMuted = !seat.muted;
+    const toggleFn = functions.httpsCallable('toggleMic');
+    try {
+        await toggleFn({ roomId, seatNumber: currentSeatId, muted: newMuted });
+    } catch (err) {
+        alert(err.message);
+    }
+});
+
+document.getElementById('leave-room-btn')?.addEventListener('click', async () => {
+    const leaveFn = functions.httpsCallable('leaveRoom');
+    try {
+        await leaveFn({ roomId });
+        window.location.href = 'rooms.html';
+    } catch (err) {
+        alert(err.message);
+    }
+});
+
+document.getElementById('send-chat-btn')?.addEventListener('click', sendChat);
+document.getElementById('chat-input')?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendChat();
+});
+
+async function sendChat() {
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    try {
+        await db.collection('messages').doc(roomId).collection('messages').add({
+            senderId: currentUser.uid,
+            senderName: currentUser.displayName || currentUser.email,
+            text: text,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+setInterval(async () => {
+    if (!currentSeatId) return;
+    const userDoc = await db.collection('users').doc(currentUser.uid).get();
+    const earnings = userDoc.data()?.totalEarnings || 0;
+    const infoDiv = document.getElementById('earnings-info');
+    if (infoDiv) infoDiv.innerHTML = `💰 Estimated earnings: ${earnings} diamonds`;
+}, 60000);
+
+loadRoom();
