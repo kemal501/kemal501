@@ -1,14 +1,17 @@
 // ============================================
-// BARCA LIVE – FIREBASE CONFIGURATION
-// From your android google-services.json
+// BARCA LIVE – COMPLETE FRONTEND JAVASCRIPT
+// Firebase Config (Web App)
 // ============================================
+
 const firebaseConfig = {
-    apiKey: "AIzaSyASrRnI-ga17EFZDqhDFJKgWI6t7BCwa1E",
+    apiKey: "AIzaSyD8JiOE_UYX7Uq4-T7--A5dgPaMEzhLyMo",
     authDomain: "website-a889d.firebaseapp.com",
+    databaseURL: "https://website-a889d-default-rtdb.firebaseio.com",
     projectId: "website-a889d",
     storageBucket: "website-a889d.firebasestorage.app",
     messagingSenderId: "953289869545",
-    appId: "1:953289869545:web:fe68911dd58967e44b4878"
+    appId: "1:953289869545:web:75c51fe888ee9f734b4878",
+    measurementId: "G-8JLT6XFBS6"
 };
 
 // Initialize Firebase
@@ -20,7 +23,7 @@ const functions = firebase.functions();
 // Global variables
 let currentUser = null;
 
-// Auth state listener
+// ========== AUTH STATE LISTENER ==========
 auth.onAuthStateChanged(async (user) => {
     if (user) {
         currentUser = user;
@@ -30,7 +33,8 @@ auth.onAuthStateChanged(async (user) => {
         loadUserData(user.uid);
         loadRooms();
         loadGifts();
-        checkResellerStatus();      // Show reseller UI if applicable
+        checkResellerStatus();
+        checkAdminStatus();
     } else {
         document.getElementById('auth-container').style.display = 'block';
         document.getElementById('dashboard').style.display = 'none';
@@ -52,8 +56,8 @@ async function signUp() {
             diamonds: 0,
             totalEarnings: 0,
             kycStatus: 'pending',
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            role: 'user'          // default role
+            role: 'user',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         await cred.user.updateProfile({ displayName: email.split('@')[0] });
         alert('Account created!');
@@ -159,7 +163,7 @@ async function joinRoom(roomId) {
     emptySeat.joinedAt = firebase.firestore.FieldValue.serverTimestamp();
     await roomRef.update({ seats: room.seats });
     alert(`You joined as seat ${emptySeat.seatNumber}`);
-    // Here you would integrate Agora/ZEGOCLOUD
+    // Integrate Agora/ZEGOCLOUD here
 }
 
 // ========== GIFTS ==========
@@ -199,7 +203,7 @@ async function sendGift(giftId, price) {
     }
 }
 
-// ========== COINS & WITHDRAWAL (Personal) ==========
+// ========== COINS & WITHDRAWAL (PERSONAL) ==========
 function showBuyCoins() {
     document.getElementById('buy-coins-modal').style.display = 'flex';
 }
@@ -233,6 +237,18 @@ async function requestWithdrawal() {
         const result = await withdrawFn({ amountUSD, method, accountDetails });
         alert(`Withdrawal requested! Net: $${result.data.net}`);
         closeModal('withdraw-modal');
+        loadUserData(currentUser.uid);
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+// ========== DAILY BONUS ==========
+async function claimDailyBonus() {
+    const claimFn = functions.httpsCallable('claimDailyBonus');
+    try {
+        const result = await claimFn();
+        alert(`You received ${result.data.amount} coins for daily login!`);
         loadUserData(currentUser.uid);
     } catch (err) {
         alert(err.message);
@@ -276,7 +292,6 @@ async function loadPackages() {
 
 function showBuyPackage() {
     document.getElementById('buy-package-modal').style.display = 'flex';
-    // Reuse the same packages list inside modal
     const listPackages = functions.httpsCallable('listCoinPackages');
     listPackages().then(res => {
         const packages = res.data;
@@ -319,10 +334,7 @@ function showTransferCoins() {
         .catch(err => alert(err.message));
 }
 
-// ========== HELPERS ==========
-function closeModal(id) {
-    document.getElementById(id).style.display = 'none';
-}// ==================== ADMIN COIN GENERATION ====================
+// ========== ADMIN COIN GENERATION ==========
 async function checkAdminStatus() {
     const user = currentUser;
     if (!user) return;
@@ -352,14 +364,7 @@ async function adminMintCoins() {
     }
 }
 
-// ========== DAILY BONUS CLAIM BUTTON (Add to dashboard) ==========
-async function claimDailyBonus() {
-    const claimFn = functions.httpsCallable('claimDailyBonus');
-    try {
-        const result = await claimFn();
-        alert(`You received ${result.data.amount} coins for daily login!`);
-        loadUserData(currentUser.uid);
-    } catch (err) {
-        alert(err.message);
-    }
+// ========== HELPER FUNCTIONS ==========
+function closeModal(id) {
+    document.getElementById(id).style.display = 'none';
 }
